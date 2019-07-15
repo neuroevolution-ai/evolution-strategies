@@ -1,0 +1,9 @@
+#IDE
+.idea/
+
+#Python virtual environment
+venv/
+
+#Python Bytecode
+es_distributed/__pycache__/
+*.py[cod]
