@@ -202,7 +202,8 @@ class SetFromFlat(object):
 
 class GetFlat(object):
     def __init__(self, var_list):
-        self.op = tf.concat(0, [tf.reshape(v, [numel(v)]) for v in var_list])
+        x = [tf.reshape(v, [numel(v)]) for v in var_list]
+        self.op = tf.concat(x, 0) #Seems like defining axis as first parameter is deprecated, so axis as second parameter
     def __call__(self):
         return get_session().run(self.op)
 
