@@ -85,6 +85,11 @@ def compute_centered_ranks(x):
 
 
 def make_session(single_threaded):
+    """
+    start a tf session
+    :param single_threaded:
+    :return:
+    """
     import tensorflow as tf
     if not single_threaded:
         return tf.InteractiveSession()
@@ -114,13 +119,30 @@ def batched_weighted_sum(weights, vecs, batch_size):
 
 
 def setup(exp, single_threaded):
+    """
+    Setup the environment
+
+    :param exp: Configuration JSON
+    :param single_threaded: todo
+    :return:
+    """
+
+
     import gym
-    gym.undo_logger_setup()
+    import roboschool
+
+    #logging
+    #gym.undo_logger_setup()
+
     from . import policies, tf_util
 
+    #import config from JSON
     config = Config(**exp['config'])
     env = gym.make(exp['env_id'])
+    #start tf session
     sess = make_session(single_threaded=single_threaded)
+
+    #Instantiate object of Class defined in type of JSON
     policy = getattr(policies, exp['policy']['type'])(env.observation_space, env.action_space, **exp['policy']['args'])
     tf_util.initialize()
 
@@ -298,6 +320,8 @@ def run_master(master_redis_cfg, log_dir, exp):
             assert not osp.exists(filename)
             policy.save(filename)
             tlogger.log('Saved snapshot {}'.format(filename))
+            if curr_task_id == 3:
+                break
 
 
 def rollout_and_update_ob_stat(policy, env, timestep_limit, rs, task_ob_stat, calc_obstat_prob):
