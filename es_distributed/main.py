@@ -6,8 +6,8 @@ import sys
 
 import click
 
-from .dist import RelayClient
-from .es import run_master, run_worker, SharedNoiseTable
+from es_distributed.dist import RelayClient
+from es_distributed.es import run_master, run_worker, SharedNoiseTable
 
 
 def mkdir_p(path):
@@ -29,7 +29,7 @@ def cli():
 
 
 @cli.command()
-@click.option('--exp_str')
+@click.option('--exp_str') #configuration file
 @click.option('--exp_file')
 @click.option('--master_socket_path', required=True)
 @click.option('--log_dir')
