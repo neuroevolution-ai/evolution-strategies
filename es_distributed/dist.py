@@ -60,6 +60,9 @@ def retry_get(pipe, key, tries=300, base_delay=4.):
 
 
 class MasterClient:
+    """
+    Master object
+    """
     def __init__(self, master_redis_cfg):
         self.task_counter = 0
         self.master_redis = retry_connect(master_redis_cfg)
@@ -130,6 +133,9 @@ class RelayClient:
 
 
 class WorkerClient:
+    """
+    Worker object
+    """
     def __init__(self, relay_redis_cfg):
         self.local_redis = retry_connect(relay_redis_cfg)
         logger.info('[worker] Connected to relay: {}'.format(self.local_redis))
@@ -137,6 +143,11 @@ class WorkerClient:
         self.cached_task_id, self.cached_task_data = None, None
 
     def get_experiment(self):
+        """
+        Gets the Experiment from redis, supplied by the master
+
+        :return: The experiment as JSON object
+        """
         # Grab experiment info
         exp = deserialize(retry_get(self.local_redis, EXP_KEY))
         logger.info('[worker] Experiment: {}'.format(exp))
