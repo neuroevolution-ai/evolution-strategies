@@ -5,8 +5,9 @@ import os
 import sys
 
 import click
+from multiprocessing import Process, Pool, Queue
 
-from es_distributed.dist import RelayClient
+#from es_distributed.dist import RelayClient
 from es_distributed.es import run_master, run_worker, SharedNoiseTable
 
 
@@ -31,9 +32,10 @@ def cli():
 @cli.command()
 @click.option('--exp_str') #configuration file
 @click.option('--exp_file')
-@click.option('--master_socket_path', required=True)
+@click.option('--num_workers')
+#@click.option('--master_socket_path', required=True)
 @click.option('--log_dir')
-def master(exp_str, exp_file, master_socket_path, log_dir):
+def master(exp_str, exp_file, num_workers, log_dir):
     """
     Starts the master which will listen for workers on the redis server.
 
@@ -60,15 +62,31 @@ def master(exp_str, exp_file, master_socket_path, log_dir):
         assert False
     log_dir = os.path.expanduser(log_dir) if log_dir else '/tmp/es_master_{}'.format(os.getpid())
     mkdir_p(log_dir)
-    run_master({'unix_socket_path': master_socket_path}, log_dir, exp)
+
+    noise = SharedNoiseTable()  # Workers share the same noise so less data needs to be interchanged
+    num_workers = num_workers if num_workers else os.cpu_count()
+
+    task_queue = Queue()
+    result_queue = Queue()
+
+    with Pool(int(num_workers)) as pool:
+        pool.apply_async(run_worker, args=(exp, noise, task_queue, result_queue))
+
+    # master_p = Process(target=run_master, args=(exp, task_queue, result_queue, log_dir))
+    # master_p.start()
+    #
+    # for _ in range(int(num_workers)):
+    #     worker_p = Process(target=run_worker, args=(exp, noise, task_queue, result_queue))
+    #     worker_p.start()
+
 
 
 @cli.command()
-@click.option('--master_host', required=True)
-@click.option('--master_port', default=6379, type=int)
-@click.option('--relay_socket_path', required=True)
+#@click.option('--master_host', required=True)
+#@click.option('--master_port', default=6379, type=int)
+#@click.option('--relay_socket_path', required=True)
 @click.option('--num_workers', type=int, default=0)
-def workers(master_host, master_port, relay_socket_path, num_workers):
+def workers(exp):
     """
     Starts a batch of workers, delivering work to the redis server.
 
@@ -84,19 +102,19 @@ def workers(master_host, master_port, relay_socket_path, num_workers):
     :return: None
     """
 
-    # Start the relay
-    master_redis_cfg = {'host': master_host, 'port': master_port}
-    relay_redis_cfg = {'unix_socket_path': relay_socket_path}
-    if os.fork() == 0:
-        RelayClient(master_redis_cfg, relay_redis_cfg).run()
-        return
-    # Start the workers
+    # # Start the relay
+    # master_redis_cfg = {'host': master_host, 'port': master_port}
+    # relay_redis_cfg = {'unix_socket_path': relay_socket_path}
+    # if os.fork() == 0:
+    #     #RelayClient(master_redis_cfg, relay_redis_cfg).run()
+    #     return
+    # # Start the workers
     noise = SharedNoiseTable()  # Workers share the same noise so less data needs to be interchanged
-    num_workers = num_workers if num_workers else os.cpu_count()
+    #num_workers = num_workers if num_workers else os.cpu_count()
     logging.info('Spawning {} workers'.format(num_workers))
     for _ in range(num_workers):
         if os.fork() == 0:
-            run_worker(relay_redis_cfg, noise=noise)
+            run_worker(relay_redis_cfg, exp=exp, noise=noise)
             return
     os.wait()
 
