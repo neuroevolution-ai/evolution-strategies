@@ -53,7 +53,11 @@ class SharedNoiseTable(object):
         seed = 123
         count = 250000000  # 1 gigabyte of 32-bit numbers. Will actually sample 2 gigabytes below.
         logger.info('Sampling {} random numbers with seed {}'.format(count, seed))
+
+        # Instantiate an array of C float datatype with size count
         self._shared_mem = multiprocessing.Array(ctypes.c_float, count)
+
+        # Convert to numpy array
         self.noise = np.ctypeslib.as_array(self._shared_mem.get_obj())
         assert self.noise.dtype == np.float32
         self.noise[:] = np.random.RandomState(seed).randn(count)  # 64-bit to 32-bit conversion here
@@ -86,9 +90,10 @@ def compute_centered_ranks(x):
 
 def make_session(single_threaded):
     """
-    start a tf session
-    :param single_threaded:
-    :return:
+    Start an InteractiveSession.
+
+    :param single_threaded: When True starts a Session without parameters, when False provides a ConfigProto object
+    :return: The InteractiveSession
     """
     import tensorflow as tf
     if not single_threaded:
@@ -129,20 +134,19 @@ def setup(exp, single_threaded):
 
 
     import gym
-    import roboschool
-
-    #logging
-    #gym.undo_logger_setup()
+    import roboschool # Needed to register the roboschool environments within gym
 
     from . import policies, tf_util
 
-    #import config from JSON
+    # import config from JSON
     config = Config(**exp['config'])
+
     env = gym.make(exp['env_id'])
-    #start tf session
+
+    # start tf session
     sess = make_session(single_threaded=single_threaded)
 
-    #Instantiate object of Class defined in type of JSON
+    # Instantiate an child object of the Policy Class as defined in "type" of the JSON file
     policy = getattr(policies, exp['policy']['type'])(env.observation_space, env.action_space, **exp['policy']['args'])
     tf_util.initialize()
 
@@ -155,6 +159,7 @@ def run_master(master_redis_cfg, log_dir, exp):
     from . import tabular_logger as tlogger
     logger.info('Tabular logging to {}'.format(log_dir))
     tlogger.start(log_dir)
+
     config, env, sess, policy = setup(exp, single_threaded=False)
     master = MasterClient(master_redis_cfg)
     optimizer = {'sgd': SGD, 'adam': Adam}[exp['optimizer']['type']](policy, **exp['optimizer']['args'])
@@ -164,10 +169,13 @@ def run_master(master_redis_cfg, log_dir, exp):
         env.observation_space.shape,
         eps=1e-2  # eps to prevent dividing by zero at the beginning when computing mean/stdev
     )
+
+    # Use existing weights from other policy
     if 'init_from' in exp['policy']:
         logger.info('Initializing weights from {}'.format(exp['policy']['init_from']))
         policy.initialize_from(exp['policy']['init_from'], ob_stat)
 
+    # Check if config wants to cutoff an episode at some point
     if config.episode_cutoff_mode.startswith('adaptive:'):
         _, args = config.episode_cutoff_mode.split(':')
         arg0, arg1, arg2 = args.split(',')
@@ -335,11 +343,24 @@ def rollout_and_update_ob_stat(policy, env, timestep_limit, rs, task_ob_stat, ca
 
 
 def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
+    """
+    Starts a worker to work on the environment.
+
+    :param relay_redis_cfg: Path to the redis unix socket
+    :param noise: Object of SharedNoiseTable, all workers use the same to reconstruct the noise later by the master
+    :param min_task_runtime: Optional parameter to the state the minimum runtime per task
+    :return: None, results get pushed to the redis server
+    """
+
     logger.info('run_worker: {}'.format(locals()))
     assert isinstance(noise, SharedNoiseTable)
+
+    # Setup
     worker = WorkerClient(relay_redis_cfg)
     exp = worker.get_experiment()
     config, env, sess, policy = setup(exp, single_threaded=True)
+
+    # Random stream used for todo
     rs = np.random.RandomState()
     worker_id = rs.randint(2 ** 31)
 
@@ -352,9 +373,11 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
         if policy.needs_ob_stat:
             policy.set_ob_stat(task_data.ob_mean, task_data.ob_std)
 
+        # todo whats this condition doing?
         if rs.rand() < config.eval_prob:
             # Evaluation: noiseless weights and noiseless actions
             policy.set_trainable_flat(task_data.params)
+
             eval_rews, eval_length = policy.rollout(env)  # eval rollouts don't obey task_data.timestep_limit
             eval_return = eval_rews.sum()
             logger.info('Eval result: task={} return={:.3f} length={}'.format(task_id, eval_return, eval_length))
@@ -376,17 +399,21 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
             task_ob_stat = RunningStat(env.observation_space.shape, eps=0.)  # eps=0 because we're incrementing only
 
             while not noise_inds or time.time() - task_tstart < min_task_runtime:
+                # Sample noise from the SharedNoise
                 noise_idx = noise.sample_index(rs, policy.num_params)
                 v = config.noise_stdev * noise.get(noise_idx, policy.num_params)
 
+                # Evaluate the sampled noise positive
                 policy.set_trainable_flat(task_data.params + v)
                 rews_pos, len_pos = rollout_and_update_ob_stat(
                     policy, env, task_data.timestep_limit, rs, task_ob_stat, config.calc_obstat_prob)
 
+                # Evaluate the sample noise negative
                 policy.set_trainable_flat(task_data.params - v)
                 rews_neg, len_neg = rollout_and_update_ob_stat(
                     policy, env, task_data.timestep_limit, rs, task_ob_stat, config.calc_obstat_prob)
 
+                # Gather results
                 noise_inds.append(noise_idx)
                 returns.append([rews_pos.sum(), rews_neg.sum()])
                 signreturns.append([np.sign(rews_pos).sum(), np.sign(rews_neg).sum()])
