@@ -1,5 +1,6 @@
 import logging
 import time
+import os
 from collections import namedtuple
 
 import numpy as np
@@ -154,14 +155,43 @@ def setup(exp, single_threaded):
 
     return config, env, sess, policy
 
-def pop_item(queue):
-    while True:
-        # Blocks until item is available
-        item = queue.get()
-        if item is not None:
-            return item
+def pop_item(queue, lock):
+    # while True:
+    #     if queue.empty():
+    #         #time.sleep(2)
+    #         continue
+    #     else:
+    #         with lock:
+    #             print("[PID " + str(os.getpid()) + "] Popped")
+    #         return queue.get()
 
-def run_master(exp, task_queue, result_queue, log_dir):
+    item = queue.get()
+
+    with lock:
+        print("[PID " + str(os.getpid()) + "] Popped result")
+
+    return item
+
+    #
+    # while not queue.empty():
+    #     item = queue.get()
+    #     with lock:
+    #         print("[PID " + str(os.getpid()) + "] Popped")
+    #     return item
+
+def get_task(task_queue, lock):
+    item = task_queue.get()
+    task_queue.put(item)
+
+    with lock:
+        print("[PID " + str(os.getpid()) + "] Popped and pushed item on task list")
+
+    return item
+
+
+
+
+def run_master(exp, task_queue, result_queue, lock, log_dir):
     logger.info('run_master: {}'.format(locals()))
     from .optimizers import SGD, Adam
     from . import tabular_logger as tlogger
@@ -256,7 +286,10 @@ def run_master(exp, task_queue, result_queue, log_dir):
 
             #task_id, result = master.pop_result()
 
-            result = pop_item(result_queue)
+            result = pop_item(result_queue, lock)
+            with lock:
+                tlogger.log('Master popped an item')
+
 
             """
             ----------- GET RESULT------------------------
@@ -393,7 +426,7 @@ def rollout_and_update_ob_stat(policy, env, timestep_limit, rs, task_ob_stat, ca
     return rollout_rews, rollout_len
 
 
-def run_worker(noise, exp, task_queue, result_queue, *, min_task_runtime=.2):
+def run_worker(noise, exp, task_queue, result_queue, lock, *, min_task_runtime=.2):
     """
     Starts a worker to work on the environment.
 
@@ -403,11 +436,13 @@ def run_worker(noise, exp, task_queue, result_queue, *, min_task_runtime=.2):
     :return: None, results get pushed to the redis server
     """
 
-    logger.info('run_worker: {}'.format(locals()))
+    with lock:
+        logger.info('run_worker: {}'.format(locals()))
+
     assert isinstance(noise, SharedNoiseTable)
 
     # Setup
-    #worker = WorkerClient(relay_redis_cfg)
+    #worker = WorkerClient()
     #exp = worker.get_experiment()
     config, env, sess, policy = setup(exp, single_threaded=True)
 
@@ -426,7 +461,7 @@ def run_worker(noise, exp, task_queue, result_queue, *, min_task_runtime=.2):
 
 
         #task_id, task_data = worker.get_current_task()
-        task_data = pop_item(task_queue)
+        task_data = get_task(task_queue, lock)
 
 
         """
@@ -459,7 +494,9 @@ def run_worker(noise, exp, task_queue, result_queue, *, min_task_runtime=.2):
 
             eval_rews, eval_length = policy.rollout(env)  # eval rollouts don't obey task_data.timestep_limit
             eval_return = eval_rews.sum()
-            logger.info('Eval result: task={} return={:.3f} length={}'.format(task_id, eval_return, eval_length))
+
+            with lock:
+                logger.info('Eval result: task={} return={:.3f} length={}'.format(task_id, eval_return, eval_length))
 
 
             """
