@@ -166,15 +166,33 @@ VARIABLES = {}
 # ================================================================
 
 def var_shape(x):
+    """
+    Return the dimensions of a Tensor in an integer list.
+
+    :param x: The Tensor from which one wants the dimensions
+    :return: A list of integers with the dimensions from x
+    """
     out = [k.value for k in x.get_shape()]
     assert all(isinstance(a, int) for a in out), \
         "shape function assumes that shape is fully known"
     return out
 
 def numel(x):
+    """
+    Calculate the product of the dimensions of x.
+
+    :param x: Tensor
+    :return: Integer value
+    """
     return intprod(var_shape(x))
 
 def intprod(x):
+    """
+    Calculates the product of all members of the given array x and casts it to int.
+
+    :param x: Array which elements shall be multiplied
+    :return: The integer value of the multiplication
+    """
     return int(np.prod(x))
 
 def flatgrad(loss, var_list):
