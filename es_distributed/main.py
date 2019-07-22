@@ -5,7 +5,7 @@ import os
 import sys
 
 import click
-from multiprocessing import Process, Pool, Queue
+from multiprocessing import Process, Pool, Queue, Lock
 
 #from es_distributed.dist import RelayClient
 from es_distributed.es import run_master, run_worker, SharedNoiseTable
@@ -69,9 +69,32 @@ def master(exp_str, exp_file, num_workers, log_dir):
     task_queue = Queue()
     result_queue = Queue()
 
-    with Pool(int(num_workers)) as pool:
-        pool.apply_async(run_worker, args=(exp, noise, task_queue, result_queue))
+    lock = Lock()
 
+    #pool = Pool(int(num_workers))
+
+    #pool.apply_async(run_worker, args=(noise, exp, task_queue, result_queue))
+
+    workers = []
+
+    for _ in range(int(num_workers)):
+        worker_p = Process(target=run_worker, args=(noise, exp, task_queue, result_queue, lock,))
+        workers.append(worker_p)
+        worker_p.start()
+
+
+
+    #run_worker(noise, exp, task_queue, result_queue)
+
+    master_p = Process(target=run_master, args=(exp, task_queue, result_queue, lock, log_dir,))
+    master_p.start()
+
+    for worker in workers:
+        worker.join()
+    
+    master_p.join()
+
+    #pool.join()
     # master_p = Process(target=run_master, args=(exp, task_queue, result_queue, log_dir))
     # master_p.start()
     #
