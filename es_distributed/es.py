@@ -4,9 +4,6 @@ import os
 from collections import namedtuple
 
 import numpy as np
-from multiprocessing import Queue
-
-#from .dist import MasterClient, WorkerClient
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +134,9 @@ def setup(exp, single_threaded):
 
 
     import gym
-    import roboschool # Needed to register the roboschool environments within gym
+
+    # Needed to register the roboschool environments within gym
+    import roboschool
 
     from . import policies, tf_util
 
@@ -155,36 +154,16 @@ def setup(exp, single_threaded):
 
     return config, env, sess, policy
 
-def pop_item(queue, lock):
-    # while True:
-    #     if queue.empty():
-    #         #time.sleep(2)
-    #         continue
-    #     else:
-    #         with lock:
-    #             print("[PID " + str(os.getpid()) + "] Popped")
-    #         return queue.get()
-
+def pop_item(queue, lock=None):
     item = queue.get()
-
-    with lock:
-        print("[PID " + str(os.getpid()) + "] Popped result")
 
     return item
 
-    #
-    # while not queue.empty():
-    #     item = queue.get()
-    #     with lock:
-    #         print("[PID " + str(os.getpid()) + "] Popped")
-    #     return item
-
-def get_task(task_queue, lock):
+def get_task(task_queue, lock=None):
     item = task_queue.get()
-    task_queue.put(item)
 
-    with lock:
-        print("[PID " + str(os.getpid()) + "] Popped and pushed item on task list")
+    # todo find a better solution for this. Maybe multiprocessing array
+    task_queue.put(item)
 
     return item
 
@@ -199,7 +178,6 @@ def run_master(exp, task_queue, result_queue, lock, log_dir):
     tlogger.start(log_dir)
 
     config, env, sess, policy = setup(exp, single_threaded=False)
-    #master = MasterClient(master_redis_cfg)
     optimizer = {'sgd': SGD, 'adam': Adam}[exp['optimizer']['type']](policy, **exp['optimizer']['args'])
     noise = SharedNoiseTable()
     rs = np.random.RandomState()
@@ -231,7 +209,6 @@ def run_master(exp, task_queue, result_queue, lock, log_dir):
     episodes_so_far = 0
     timesteps_so_far = 0
     tstart = time.time()
-    #master.declare_experiment(exp) # Not needed gets passed as parameter
 
     task_counter = 0
 
@@ -240,11 +217,7 @@ def run_master(exp, task_queue, result_queue, lock, log_dir):
         theta = policy.get_trainable_flat()
         assert theta.dtype == np.float32
 
-        """
-        ----------- PUSH TASK------------------------
-
-        """
-
+        # Task counter is used to recognize false tasks from previous iterations later
         curr_task_id = task_counter
         task_counter += 1
 
@@ -256,21 +229,6 @@ def run_master(exp, task_queue, result_queue, lock, log_dir):
             task_id = curr_task_id
         ))
 
-
-        # curr_task_id = master.declare_task(Task(
-        #     params=theta,
-        #     ob_mean=ob_stat.mean if policy.needs_ob_stat else None,
-        #     ob_std=ob_stat.std if policy.needs_ob_stat else None,
-        #     timestep_limit=tslimit
-        # ))
-
-        """
-        ----------- PUSH TASK------------------------
-
-        """
-
-
-
         tlogger.log('********** Iteration {} **********'.format(curr_task_id))
 
         # Pop off results for the current task
@@ -278,25 +236,8 @@ def run_master(exp, task_queue, result_queue, lock, log_dir):
         num_results_skipped, num_episodes_popped, num_timesteps_popped, ob_count_this_batch = 0, 0, 0, 0
         while num_episodes_popped < config.episodes_per_batch or num_timesteps_popped < config.timesteps_per_batch:
             # Wait for a result
-
-            """
-            ----------- GET RESULT------------------------
-
-            """
-
-            #task_id, result = master.pop_result()
-
             result = pop_item(result_queue, lock)
-            with lock:
-                tlogger.log('Master popped an item')
 
-
-            """
-            ----------- GET RESULT------------------------
-
-            """
-
-            #assert isinstance(task_id, int) and isinstance(result, Result)
             assert isinstance(result, Result)
             task_id = result.task_id
             assert isinstance(task_id, int)
@@ -442,8 +383,6 @@ def run_worker(noise, exp, task_queue, result_queue, lock, *, min_task_runtime=.
     assert isinstance(noise, SharedNoiseTable)
 
     # Setup
-    #worker = WorkerClient()
-    #exp = worker.get_experiment()
     config, env, sess, policy = setup(exp, single_threaded=True)
 
     # Random stream used for todo
@@ -453,36 +392,13 @@ def run_worker(noise, exp, task_queue, result_queue, lock, *, min_task_runtime=.
     assert policy.needs_ob_stat == (config.calc_obstat_prob != 0)
 
     while True:
-
-        """
-        ----------- GET TASK------------------------ PULL FROM mp QUEUE
-
-        """
-
-
-        #task_id, task_data = worker.get_current_task()
         task_data = get_task(task_queue, lock)
-
-
-        """
-        ----------- GET TASK------------------------
-
-        """
-
-
-
 
         task_tstart = time.time()
 
-
-
-
-        #assert isinstance(task_id, int) and isinstance(task_data, Task)
         assert isinstance(task_data, Task)
         task_id = task_data.task_id
         assert isinstance(task_id, int)
-
-
 
         if policy.needs_ob_stat:
             policy.set_ob_stat(task_data.ob_mean, task_data.ob_std)
@@ -498,25 +414,6 @@ def run_worker(noise, exp, task_queue, result_queue, lock, *, min_task_runtime=.
             with lock:
                 logger.info('Eval result: task={} return={:.3f} length={}'.format(task_id, eval_return, eval_length))
 
-
-            """
-            ----------- PUSH TASK------------------------
-
-            """
-
-            # worker.push_result(task_id, Result(
-            #     worker_id=worker_id,
-            #     noise_inds_n=None,
-            #     returns_n2=None,
-            #     signreturns_n2=None,
-            #     lengths_n2=None,
-            #     eval_return=eval_return,
-            #     eval_length=eval_length,
-            #     ob_sum=None,
-            #     ob_sumsq=None,
-            #     ob_count=None
-            # ))
-
             result_queue.put(Result(
                 worker_id=worker_id,
                 noise_inds_n=None,
@@ -530,13 +427,6 @@ def run_worker(noise, exp, task_queue, result_queue, lock, *, min_task_runtime=.
                 ob_count=None,
                 task_id=task_id
             ))
-
-
-            """
-            ----------- PUSH TASK------------------------
-
-            """
-
 
         else:
             # Rollouts with noise
@@ -564,26 +454,6 @@ def run_worker(noise, exp, task_queue, result_queue, lock, *, min_task_runtime=.
                 signreturns.append([np.sign(rews_pos).sum(), np.sign(rews_neg).sum()])
                 lengths.append([len_pos, len_neg])
 
-
-            """
-            ----------- PUSH TASK------------------------
-
-            """
-
-
-            # worker.push_result(task_id, Result(
-            #     worker_id=worker_id,
-            #     noise_inds_n=np.array(noise_inds),
-            #     returns_n2=np.array(returns, dtype=np.float32),
-            #     signreturns_n2=np.array(signreturns, dtype=np.float32),
-            #     lengths_n2=np.array(lengths, dtype=np.int32),
-            #     eval_return=None,
-            #     eval_length=None,
-            #     ob_sum=None if task_ob_stat.count == 0 else task_ob_stat.sum,
-            #     ob_sumsq=None if task_ob_stat.count == 0 else task_ob_stat.sumsq,
-            #     ob_count=task_ob_stat.count
-            # ))
-
             result_queue.put(Result(
                 worker_id=worker_id,
                 noise_inds_n=np.array(noise_inds),
@@ -597,9 +467,3 @@ def run_worker(noise, exp, task_queue, result_queue, lock, *, min_task_runtime=.
                 ob_count=task_ob_stat.count,
                 task_id=task_id
             ))
-
-            """
-            ----------- PUSH TASK------------------------
-
-            """
-
