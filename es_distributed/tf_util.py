@@ -202,6 +202,13 @@ def flatgrad(loss, var_list):
 
 class SetFromFlat(object):
     def __init__(self, var_list, dtype=tf.float32):
+        """
+        Construct self.op which will take the flat list var_list and divide it into chunks of Tensors, corresponding
+        to their dimensions
+
+        :param var_list: Flat list of Tensors
+        :param dtype: Datatype, default=tf.float32
+        """
         assigns = []
         shapes = list(map(var_shape, var_list))
         total_size = np.sum([intprod(shape) for shape in shapes])
@@ -216,13 +223,29 @@ class SetFromFlat(object):
         assert start == total_size
         self.op = tf.group(*assigns)
     def __call__(self, theta):
+        """
+        Runs the operation self.op with replacing the placeholder self.theta with the given theta.
+
+        :param theta: The new value for self.theta
+        :return: None
+        """
         get_session().run(self.op, feed_dict={self.theta:theta})
 
 class GetFlat(object):
     def __init__(self, var_list):
+        """
+        Constructs the TensorFlow operation self.op which flattens the given var_list
+
+        :param var_list: List that shall be flattened
+        """
         x = [tf.reshape(v, [numel(v)]) for v in var_list]
         self.op = tf.concat(x, 0) #Seems like defining axis as first parameter is deprecated, so axis as second parameter
     def __call__(self):
+        """
+        Runs the TensorFlow operation self.op which flattens the var_list parameter in __init__
+
+        :return: Same shape as self.op, with leaves replaced by the corresponding values returned by TensorFlow
+        """
         return get_session().run(self.op)
 
 # ================================================================
