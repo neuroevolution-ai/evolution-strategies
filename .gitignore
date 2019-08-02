@@ -7,3 +7,6 @@ venv/
 #Python Bytecode
 es_distributed/__pycache__/
 *.py[cod]
+
+#Jupyter Notebook
+.ipynb_checkpoints/
