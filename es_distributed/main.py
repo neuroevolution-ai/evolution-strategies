@@ -5,10 +5,9 @@ import os
 import sys
 
 import click
-from multiprocessing import Process, Queue, Lock
+from multiprocessing import Process, Queue, Lock, Manager
 
 from es_distributed.es import run_master, run_worker, SharedNoiseTable
-
 
 def mkdir_p(path):
     try:
@@ -64,24 +63,26 @@ def master(exp_str, exp_file, num_workers, log_dir):
     noise = SharedNoiseTable()  # Workers share the same noise so less data needs to be interchanged
     num_workers = num_workers if num_workers else os.cpu_count()
 
-    task_queue = Queue()
+    workers = []
+
+    manager = Manager()
+    tasks = manager.list()
     result_queue = Queue()
 
     lock = Lock()
 
-    workers = []
+    master_p = Process(target=run_master, args=(exp, tasks, result_queue, lock, log_dir,))
+    master_p.start()
 
     for _ in range(int(num_workers)):
-        worker_p = Process(target=run_worker, args=(noise, exp, task_queue, result_queue, lock,))
+        worker_p = Process(target=run_worker, args=(noise, exp, tasks, result_queue, lock,))
         workers.append(worker_p)
         worker_p.start()
 
-    master_p = Process(target=run_master, args=(exp, task_queue, result_queue, lock, log_dir,))
-    master_p.start()
 
     for worker in workers:
         worker.join()
-    
+
     master_p.join()
 
 if __name__ == '__main__':
