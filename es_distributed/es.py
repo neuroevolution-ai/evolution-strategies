@@ -132,7 +132,6 @@ def setup(exp, single_threaded):
     :return:
     """
 
-
     import gym
 
     # Needed to register the roboschool environments within gym
@@ -159,18 +158,7 @@ def pop_item(queue, lock=None):
 
     return item
 
-def get_task(task_queue, lock=None):
-    item = task_queue.get()
-
-    # todo find a better solution for this. Maybe multiprocessing array
-    task_queue.put(item)
-
-    return item
-
-
-
-
-def run_master(exp, task_queue, result_queue, lock, log_dir):
+def run_master(exp, tasks, result_queue, lock, log_dir):
     logger.info('run_master: {}'.format(locals()))
     from .optimizers import SGD, Adam
     from . import tabular_logger as tlogger
@@ -221,12 +209,12 @@ def run_master(exp, task_queue, result_queue, lock, log_dir):
         curr_task_id = task_counter
         task_counter += 1
 
-        task_queue.put(Task(
-            params=theta,
-            ob_mean=ob_stat.mean if policy.needs_ob_stat else None,
-            ob_std=ob_stat.std if policy.needs_ob_stat else None,
-            timestep_limit=tslimit,
-            task_id = curr_task_id
+        tasks.append(Task(
+                params=theta,
+                ob_mean=ob_stat.mean if policy.needs_ob_stat else None,
+                ob_std=ob_stat.std if policy.needs_ob_stat else None,
+                timestep_limit=tslimit,
+                task_id = curr_task_id
         ))
 
         tlogger.log('********** Iteration {} **********'.format(curr_task_id))
@@ -367,7 +355,7 @@ def rollout_and_update_ob_stat(policy, env, timestep_limit, rs, task_ob_stat, ca
     return rollout_rews, rollout_len
 
 
-def run_worker(noise, exp, task_queue, result_queue, lock, *, min_task_runtime=.2):
+def run_worker(noise, exp, tasks, result_queue, lock, *, min_task_runtime=.2):
     """
     Starts a worker to work on the environment.
 
@@ -392,7 +380,11 @@ def run_worker(noise, exp, task_queue, result_queue, lock, *, min_task_runtime=.
     assert policy.needs_ob_stat == (config.calc_obstat_prob != 0)
 
     while True:
-        task_data = get_task(task_queue, lock)
+        # Prevent accessing empty array (master did not emit task yet)
+        while not tasks:
+            time.sleep(0.05)
+
+        task_data = tasks[-1]
 
         task_tstart = time.time()
 
