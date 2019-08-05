@@ -137,7 +137,7 @@ def setup(exp, single_threaded):
     # Needed to register the roboschool environments within gym
     import roboschool
 
-    from . import policies, tf_util
+    import policies, tf_util
 
     # import config from JSON
     config = Config(**exp['config'])
@@ -160,8 +160,8 @@ def pop_item(queue, lock=None):
 
 def run_master(exp, tasks, result_queue, lock, log_dir):
     logger.info('run_master: {}'.format(locals()))
-    from .optimizers import SGD, Adam
-    from . import tabular_logger as tlogger
+    from optimizers import SGD, Adam
+    import tabular_logger as tlogger
     logger.info('Tabular logging to {}'.format(log_dir))
     tlogger.start(log_dir)
 

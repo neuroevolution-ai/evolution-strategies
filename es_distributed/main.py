@@ -7,7 +7,7 @@ import sys
 import click
 from multiprocessing import Process, Queue, Lock, Manager
 
-from es_distributed.es import run_master, run_worker, SharedNoiseTable
+from es import run_master, run_worker, SharedNoiseTable
 
 def mkdir_p(path):
     try:
