@@ -12,7 +12,7 @@ def main(env_id, policy_file, record, stochastic, extra_kwargs):
     import roboschool
     from gym import wrappers
     import tensorflow as tf
-    from es_distributed.policies import MujocoPolicy
+    from policies import MujocoPolicy
     import numpy as np
 
     env = gym.make(env_id)
