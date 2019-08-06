@@ -3,17 +3,20 @@ FROM ubuntu:xenial
 RUN apt-get update
 RUN apt-get dist-upgrade -y
 
-# Install Python3 and Redis server
+# Install base requirements
 RUN apt-get install -y python3 python3-pip git
+
+# Roboschool Requirements
+RUN apt-get install -y libgl1-mesa-dev libharfbuzz0b libpcre3-dev
 
 # Install Python prerequisites
 RUN pip3 install gym roboschool click tensorflow numpy
 
-RUN git clone https://github.com/spikingevolution/evolution-strategies.git
+# Environment variables for click
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+
+RUN mkdir evolution-strategies
+ADD . evolution-strategies/
+
 WORKDIR evolution-strategies/es_distributed/
-
-# todo: Delete when merged into master branch
-RUN git checkout develop
-
-# Train the environment provided in the configuration file
-CMD ["python3", "main.py", "--exp_file", "../configurations/humanoid.json"]
