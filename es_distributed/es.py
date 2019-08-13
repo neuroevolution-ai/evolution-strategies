@@ -222,7 +222,7 @@ def run_master(exp, tasks, result_queue, lock, log_dir):
         # Pop off results for the current task
         curr_task_results, eval_rets, eval_lens, worker_ids = [], [], [], []
         num_results_skipped, num_episodes_popped, num_timesteps_popped, ob_count_this_batch = 0, 0, 0, 0
-        while num_episodes_popped < config.episodes_per_batch or num_timesteps_popped < config.timesteps_per_batch:
+        while num_episodes_popped < config.episodes_per_batch:
             # Wait for a result
             result = pop_item(result_queue, lock)
 
