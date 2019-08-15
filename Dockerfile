@@ -7,7 +7,7 @@ RUN apt-get dist-upgrade -y
 RUN apt-get install -y python3 python3-pip git
 
 # Roboschool Requirements
-RUN apt-get install -y libgl1-mesa-dev libharfbuzz0b libpcre3-dev
+RUN apt-get install -y libgl1-mesa-dev libharfbuzz0b libpcre3-dev libqt5x11extras5
 
 # Install Python prerequisites
 RUN pip3 install gym roboschool click tensorflow numpy
@@ -17,6 +17,7 @@ ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
 RUN mkdir evolution-strategies
+
 ADD . evolution-strategies/
 
 WORKDIR evolution-strategies/es_distributed/
