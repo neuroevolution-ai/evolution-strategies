@@ -141,16 +141,30 @@ class MujocoPolicy(Policy):
             ])
 
             # Policy network
+
+            # Create a placeholder of type float32 with dimension None and the shape of the observation space
             o = tf.placeholder(tf.float32, [None] + list(ob_space.shape))
+
+            # Create the neural net with normalized observation space, clipped to [-5.0, 5.0]
             a = self._make_net(tf.clip_by_value((o - ob_mean) / ob_std, -5.0, 5.0))
+
+            #
             self._act = U.function([o], a)
         return scope
 
     def _make_net(self, o):
+        """
+
+        :param o: TensorFlow Placeholder with shape None and the shape of the observation space
+        :return:
+        """
         # Process observation
         if self.connection_type == 'ff':
             x = o
+            # Iterate through the hidden dimensions. In each iteration create a dense layer and activate it with the
+            # self.nonlin activation function
             for ilayer, hd in enumerate(self.hidden_dims):
+                # Get a dense Layer and put it into constructor of the activation function which returns a Tensor
                 x = self.nonlin(U.dense(x, hd, 'l{}'.format(ilayer), U.normc_initializer(1.0)))
         else:
             raise NotImplementedError(self.connection_type)

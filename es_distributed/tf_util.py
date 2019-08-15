@@ -107,6 +107,11 @@ def save_state(fname):
 
 
 def normc_initializer(std=1.0):
+    """
+    Create a TensorFlow constant with random numbers normed in the given shape.
+    :param std:
+    :return:
+    """
     def _initializer(shape, dtype=None, partition_info=None): #pylint: disable=W0613
         out = np.random.randn(*shape).astype(np.float32)
         out *= std / np.sqrt(np.square(out).sum(axis=0, keepdims=True))
@@ -114,6 +119,19 @@ def normc_initializer(std=1.0):
     return _initializer
 
 def dense(x, size, name, weight_init=None, bias=True):
+    """
+    Create a dense layer. When output is run it computes a matrix multiplication of x and w and adds the b to it
+    if bias=True.
+
+    :param x:
+    :param size:
+    :param name:
+    :param weight_init:
+    :param bias:
+    :return:
+    """
+
+    # Gets existing variable with the name or creates a new one
     w = tf.get_variable(name + "/w", [x.get_shape()[1], size], initializer=weight_init)
     ret = tf.matmul(x, w)
     if bias:
@@ -141,6 +159,8 @@ class _Function(object):
         assert all(len(i.op.inputs)==0 for i in inputs), "inputs should all be placeholders"
         self.inputs = inputs
         updates = updates or []
+
+        # Groups the operations in updates
         self.update_group = tf.group(*updates)
         self.outputs_update = list(outputs) + [self.update_group]
         self.givens = {} if givens is None else givens
