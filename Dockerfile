@@ -1,23 +1,33 @@
-FROM ubuntu:xenial
+FROM jupyter/base-notebook:latest
+
+# Switch to root user to install packages
+USER root
 
 RUN apt-get update
 RUN apt-get dist-upgrade -y
 
 # Install base requirements
-RUN apt-get install -y python3 python3-pip git
+RUN apt-get install -y git xvfb
 
 # Roboschool Requirements
 RUN apt-get install -y libgl1-mesa-dev libharfbuzz0b libpcre3-dev libqt5x11extras5
 
-# Install Python prerequisites
-RUN pip3 install gym roboschool click tensorflow numpy
+# Switch back to unprivileged user for python packages. User is defined in base docker image
+USER $NB_USER
 
-# Environment variables for click
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
+RUN conda install --quiet --yes \
+    'tensorflow=1.13*' \
+    'numpy=1.16*' &&\
+    conda clean --all -f -y && \
+    fix-permissions $CONDA_DIR && \
+    fix-permissions /home/$NB_USER
 
-RUN mkdir evolution-strategies
+# Use pip for packages that cannot be installed with conda
+RUN pip install --quiet \
+    gym==0.14 \
+    roboschool==1.0.48
 
-ADD . evolution-strategies/
+ADD evolution-strategies.ipynb work/
 
-WORKDIR evolution-strategies/es_distributed/
+# Run jupyter notebook with a fake display to allow rendering in roboschool TODO github issue reference
+CMD ["xvfb-run", "-a", "jupyter", "notebook"]
