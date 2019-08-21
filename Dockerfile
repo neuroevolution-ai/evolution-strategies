@@ -16,9 +16,10 @@ RUN apt-get install -y libgl1-mesa-dev libharfbuzz0b libpcre3-dev libqt5x11extra
 USER $NB_USER
 
 RUN conda install --quiet --yes \
+    'matplotlib' \
     'tensorflow=1.13*' \
     'numpy=1.16*' &&\
-    conda clean --all -f -y && \
+    conda clean --yes --all -f && \
     fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER
 
@@ -27,7 +28,10 @@ RUN pip install --quiet \
     gym==0.14 \
     roboschool==1.0.48
 
-ADD evolution-strategies.ipynb work/
+# $NB_USER == jovyan, docker does not support dynamic substitution in chown
+ADD --chown=jovyan:root . work/evolution-strategies/
+
+WORKDIR work/evolution-strategies/
 
 # Run jupyter notebook with a fake display to allow rendering in roboschool TODO github issue reference
 CMD ["xvfb-run", "-a", "jupyter", "notebook"]
