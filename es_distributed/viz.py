@@ -165,9 +165,11 @@ def main(env_id, policies_path, record, stochastic, extra_kwargs):
     # Use a new process for every policy because there is a bug in the roboschool where on a second run the environment
     # does not get properly reset
     for policy in policy_files:
-        p = Process(target=_process_viz, args=(env_id, policy)
+        p = Process(target=_process_viz, args=(env_id, policy))
         p.start()
         p.join()
+
+    #_process_viz(env_id, policy_files[-1])
 
 if __name__ == '__main__':
     main()
