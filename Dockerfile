@@ -7,7 +7,7 @@ RUN apt-get update
 RUN apt-get dist-upgrade -y
 
 # Install base requirements
-RUN apt-get install -y git xvfb
+RUN apt-get install -y git xvfb ffmpeg
 
 # Roboschool Requirements
 RUN apt-get install -y libgl1-mesa-dev libharfbuzz0b libpcre3-dev libqt5x11extras5
