@@ -16,10 +16,13 @@ RUN pip3 install gym roboschool click tensorflow numpy redis
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-RUN mkdir evolution-strategies
+RUN mkdir /home/evolution-strategies
 
-ADD . evolution-strategies/
+#RUN groupadd -g 999 appuser && useradd -r -u 999 -g appuser appuser
+USER pdeubel
 
-WORKDIR evolution-strategies/
+ADD . /home/evolution-strategies/
+
+WORKDIR /home/evolution-strategies/
 
 CMD ["/bin/bash"]
