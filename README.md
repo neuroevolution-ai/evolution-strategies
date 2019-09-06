@@ -8,4 +8,4 @@
 
 ## Run
 
-`docker run -dit --user 1003 es-redis`
+`docker run -dit es-redis`
