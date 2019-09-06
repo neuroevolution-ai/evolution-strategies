@@ -4,7 +4,7 @@ RUN apt-get update
 RUN apt-get dist-upgrade -y
 
 # Install base requirements
-RUN apt-get install -y python3 python3-pip git redis-server tmux
+RUN apt-get install -y python3 python3-pip git redis-server tmux nano
 
 # Roboschool Requirements
 RUN apt-get install -y libgl1-mesa-dev libharfbuzz0b libpcre3-dev libqt5x11extras5
