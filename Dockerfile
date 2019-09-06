@@ -18,8 +18,8 @@ ENV LANG=C.UTF-8
 
 RUN mkdir /home/evolution-strategies
 
-#RUN groupadd -g 999 appuser && useradd -r -u 999 -g appuser appuser
-USER pdeubel
+RUN groupadd -g 1010 appuser && useradd -r -u 1010 -g appuser appuser
+USER appuser
 
 ADD . /home/evolution-strategies/
 
