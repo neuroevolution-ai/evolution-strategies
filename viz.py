@@ -1,4 +1,6 @@
 import click
+import imageio
+import os
 
 
 @click.command()
@@ -25,9 +27,12 @@ def main(env_id, policy_file, record, stochastic, extra_kwargs):
 
     with tf.Session():
         pi = MujocoPolicy.Load(policy_file, extra_kwargs=extra_kwargs)
-        while True:
-            rews, t = pi.rollout(env, render=True, random_stream=np.random if stochastic else None)
+        for i in range(1):
+            rews, t, renders = pi.rollout(env, render=True, random_stream=np.random if stochastic else None)
             print('return={:.4f} len={}'.format(rews.sum(), t))
+
+            if renders.size > 0:
+                imageio.mimwrite(policy_file + ".mp4", renders, fps=24)
 
             if record:
                 env.close()
