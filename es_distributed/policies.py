@@ -74,6 +74,7 @@ class Policy:
         if save_obs:
             obs = []
         ob = env.reset()
+        renders=[]
         for _ in range(timestep_limit):
             ac = self.act(ob[None], random_stream=random_stream)[0]
             if save_obs:
@@ -82,12 +83,14 @@ class Policy:
             rews.append(rew)
             t += 1
             if render:
-                env.render()
+                renders.append(env.render(mode="rgb_array"))
             if done:
                 break
         rews = np.array(rews, dtype=np.float32)
         if save_obs:
             return rews, t, np.array(obs)
+        if render:
+            return rews, t, np.array(renders)
         return rews, t
 
     def act(self, ob, random_stream=None):
