@@ -10,7 +10,7 @@
     "return_proc_mode": "centered_rank",
     "episode_cutoff_mode": "env_default"
   },
-  "env_id": "Humanoid-v1",
+  "env_id": "Humanoid-v2",
   "exp_prefix": "humanoid",
   "optimizer": {
     "args": {
