@@ -25,8 +25,8 @@ RUN conda install --quiet --yes \
 
 # Use pip for packages that cannot be installed with conda
 RUN pip install --quiet \
-    gym==0.14 \
-    roboschool==1.0.48
+    gym \
+    roboschool
 
 # $NB_USER == jovyan, docker does not support dynamic substitution in chown
 ADD --chown=jovyan:root . work/evolution-strategies/
