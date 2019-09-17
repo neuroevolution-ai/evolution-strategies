@@ -17,8 +17,8 @@ USER $NB_USER
 
 RUN conda install --quiet --yes \
     'matplotlib' \
-    'tensorflow=1.13*' \
-    'numpy=1.16*' &&\
+    'tensorflow' \
+    'numpy' &&\
     conda clean --yes --all -f && \
     fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER
