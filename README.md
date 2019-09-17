@@ -12,4 +12,10 @@ The implementation does not use MuJoCo environments and AMI but the [Roboschool]
 
 ### Run built image
 
-`docker run -p 8888:8888 evolution-strategies`
+`docker run -d -p 8888:8888 evolution-strategies`
+
+To access the notebook run 
+
+`docker logs --tail 3 container_name`
+
+which will show you the token which was created when starting the jupyter server.
