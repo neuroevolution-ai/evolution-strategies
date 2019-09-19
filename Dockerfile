@@ -35,4 +35,4 @@ ADD --chown=jovyan:root . work/evolution-strategies/
 WORKDIR work/evolution-strategies/
 
 # Run jupyter notebook with a fake display to allow rendering in roboschool TODO github issue reference
-CMD ["xvfb-run", "-a", "jupyter", "notebook"]
+CMD ["xvfb-run", "-a", "start-notebook.sh"]
