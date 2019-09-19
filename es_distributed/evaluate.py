@@ -5,6 +5,7 @@ import os
 import csv
 
 from gym import wrappers
+from itertools import zip_longest
 from multiprocessing import Pool
 from policies import MujocoPolicy
 
@@ -51,7 +52,7 @@ def index_save_directory(save_directory):
 
 def parse_generation_number(model_file_path):
     try:
-        number = int(model_file_path.split('snapshot_')[-1].split('.h5')[0])
+        number = int(model_file_path.split('snapshot_iter')[-1].split('_rew')[0])
         return number
     except ValueError:
         return None
@@ -71,6 +72,8 @@ def evaluate_to_csv(save_directory, model_file_paths, env_id, csv_eval_file_path
 
     writer.writerow(head_row)
 
+    rows = []
+    rows.append(head_row)
     for model_file_path in model_file_paths:
         results = []
         with Pool(os.cpu_count()) as pool:
@@ -98,7 +101,9 @@ def evaluate_to_csv(save_directory, model_file_paths, env_id, csv_eval_file_path
             row.append(lengths[i])
 
         writer.writerow(row)
+        rows.append(row)
 
+    return rows
 
 def parse_log_to_csv(log_file, csv_file):
     with open(log_file) as f:
@@ -112,7 +117,6 @@ def parse_log_to_csv(log_file, csv_file):
         if not line:
             continue
 
-        #if line.startswith('*'):
         if '**********' in line:
             temp = [line[2]]
             groups.append(temp)
@@ -124,31 +128,33 @@ def parse_log_to_csv(log_file, csv_file):
 
     writer = csv.writer(open(csv_file, 'w'))
 
-    writer.writerow(['Generation',
-                     'EpRewMean',
-                     'EpRewStd',
-                     'EpLenMean',
-                     'EvalEpRewMean',
-                     'EvalEpRewStd',
-                     'EvalEpLenMean',
-                     'EvalPopRank',
-                     'EvalEpCount',
-                     'Norm',
-                     'GradNorm',
-                     'UpdateRatio',
-                     'EpisodesThisIter',
-                     'EpisodesSoFar',
-                     'TimestepsThisIter',
-                     'TimestepsSoFar',
-                     'UniqueWorkers',
-                     'UniqueWorkersFrac',
-                     'ResultsSkippedFrac',
-                     'ObCount',
-                     'TimeElapsedThisIter',
-                     'TimeElapsed'])
+    head_row = ['Generation',
+                 'EpRewMean',
+                 'EpRewStd',
+                 'EpLenMean',
+                 'EvalEpRewMean',
+                 'EvalEpRewStd',
+                 'EvalEpLenMean',
+                 'EvalPopRank',
+                 'EvalEpCount',
+                 'Norm',
+                 'GradNorm',
+                 'UpdateRatio',
+                 'EpisodesThisIter',
+                 'EpisodesSoFar',
+                 'TimestepsThisIter',
+                 'TimestepsSoFar',
+                 'UniqueWorkers',
+                 'UniqueWorkersFrac',
+                 'ResultsSkippedFrac',
+                 'ObCount',
+                 'TimeElapsedThisIter',
+                 'TimeElapsed']
 
+    writer.writerow(head_row)
 
-
+    rows = []
+    rows.append(head_row)
     for generation in groups:
         if len(generation) != 22: continue
 
@@ -159,7 +165,9 @@ def parse_log_to_csv(log_file, csv_file):
             row.append(column)
 
         writer.writerow(row)
+        rows.append(row)
 
+    return rows
 @click.command()
 @click.argument('env_id')
 @click.argument('policies_path')
@@ -168,10 +176,22 @@ def parse_log_to_csv(log_file, csv_file):
 def main(env_id, policies_path, record, stochastic):
     model_file_paths, log_file_path = index_save_directory(policies_path)
 
-    parse_log_to_csv(log_file_path, policies_path + 'log.csv')
-    #evaluate_to_csv(policies_path, model_file_paths, env_id, policies_path + 'evaluate.csv')
+    log_rows = parse_log_to_csv(log_file_path, policies_path + 'log.csv')
+    eval_rows = evaluate_to_csv(policies_path, model_file_paths, env_id, policies_path + 'evaluate.csv')
 
-
+    # 
+    # merged_rows = []
+    # merged_rows.append(eval_rows[0] + ['TimeElapsedThisIter', 'TimeElapsed', 'TimestepsThisIter', 'TimestepsSoFar', 'EpisodesThisIter', 'EpisodesSoFar'])
+    #
+    # for i in range(len(eval_rows)):
+    #     merged_row = eval_rows[i]
+    #
+    #     gen = int(merged_row[0])
+    #
+    #     merged_rows.append(eval_row)
+    # writer = csv.writer(open(policies_path + 'evaluate.csv', 'w'))
+    # for row in merged_rows:
+    #     writer.writerow(row)
 
 if __name__ == '__main__':
     main()
