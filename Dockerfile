@@ -17,17 +17,18 @@ USER $NB_USER
 
 RUN conda install --quiet --yes \
     'matplotlib' \
-    'numpy==1.16.4' \
-    'gast==0.2.2' \
-    'tensorflow' &&\
-    conda clean --yes --all -f && \
-    fix-permissions $CONDA_DIR && \
-    fix-permissions /home/$NB_USER
+    'gast==0.2.2'
 
+RUN conda install --yes -c intel 'numpy==1.16.4' 'tensorflow'
 # Use pip for packages that cannot be installed with conda
 RUN pip install --quiet \
     gym \
     roboschool
+
+RUN conda clean --yes --all -f && \
+    fix-permissions $CONDA_DIR && \
+    fix-permissions /home/$NB_USER
+
 
 # $NB_USER == jovyan, docker does not support dynamic substitution in chown
 ADD --chown=jovyan:root . work/evolution-strategies/
