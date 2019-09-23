@@ -18,7 +18,8 @@ Result = namedtuple('Result', [
     'worker_id',
     'noise_inds_n', 'returns_n2', 'signreturns_n2', 'lengths_n2',
     'eval_return', 'eval_length',
-    'ob_sum', 'ob_sumsq', 'ob_count'
+    'ob_sum', 'ob_sumsq', 'ob_count',
+    'time_for_result', 'times_per_job'
 ])
 
 
@@ -182,7 +183,9 @@ def run_master(master_redis_cfg, log_dir, exp):
         # Pop off results for the current task
         curr_task_results, eval_rets, eval_lens, worker_ids = [], [], [], []
         num_results_skipped, num_episodes_popped, num_timesteps_popped, ob_count_this_batch = 0, 0, 0, 0
-        while num_episodes_popped < config.episodes_per_batch or num_timesteps_popped < config.timesteps_per_batch:
+
+        times_per_job, times_per_result = [], []
+        while num_episodes_popped < config.episodes_per_batch:# or num_timesteps_popped < config.timesteps_per_batch:
             # Wait for a result
             task_id, result = master.pop_result()
             assert isinstance(task_id, int) and isinstance(result, Result)
@@ -216,6 +219,9 @@ def run_master(master_redis_cfg, log_dir, exp):
                     if policy.needs_ob_stat and result.ob_count > 0:
                         ob_stat.increment(result.ob_sum, result.ob_sumsq, result.ob_count)
                         ob_count_this_batch += result.ob_count
+
+                    times_per_job += result.times_per_job
+                    times_per_result.append(result.time_for_result)
                 else:
                     num_results_skipped += 1
 
@@ -288,6 +294,15 @@ def run_master(master_redis_cfg, log_dir, exp):
 
         tlogger.record_tabular("TimeElapsedThisIter", step_tend - step_tstart)
         tlogger.record_tabular("TimeElapsed", step_tend - tstart)
+
+        for i in range(len(times_per_job)):
+            tlogger.record_tabular("TimesPerJob{}".format(i), times_per_job[i])
+        tlogger.record_tabular("TimePerJobMean", np.mean(times_per_job))
+        tlogger.record_tabular("TimePerJobCount", len(times_per_job))
+        for i in range(len(times_per_result)):
+            tlogger.record_tabular("TimesPerResult{}".format(i), times_per_result[i])
+        tlogger.record_tabular("TimePerResultMean", np.mean(times_per_result))
+        tlogger.record_tabular("TimePerResultCount", len(times_per_result))
         tlogger.dump_tabular()
 
         if config.snapshot_freq != 0 and curr_task_id % config.snapshot_freq == 0:
@@ -345,14 +360,21 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
                 eval_length=eval_length,
                 ob_sum=None,
                 ob_sumsq=None,
-                ob_count=None
+                ob_count=None,
+                time_for_result=None,
+                times_per_job=None
             ))
         else:
+            time_for_result_s = time.time()
             # Rollouts with noise
             noise_inds, returns, signreturns, lengths = [], [], [], []
             task_ob_stat = RunningStat(env.observation_space.shape, eps=0.)  # eps=0 because we're incrementing only
 
+            times_per_job = []
+
             while not noise_inds or time.time() - task_tstart < min_task_runtime:
+                time_per_job_s = time.time()
+
                 noise_idx = noise.sample_index(rs, policy.num_params)
                 v = config.noise_stdev * noise.get(noise_idx, policy.num_params)
 
@@ -368,6 +390,7 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
                 returns.append([rews_pos.sum(), rews_neg.sum()])
                 signreturns.append([np.sign(rews_pos).sum(), np.sign(rews_neg).sum()])
                 lengths.append([len_pos, len_neg])
+                times_per_job.append(time.time() - time_per_job_s)
 
             worker.push_result(task_id, Result(
                 worker_id=worker_id,
@@ -379,5 +402,7 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
                 eval_length=None,
                 ob_sum=None if task_ob_stat.count == 0 else task_ob_stat.sum,
                 ob_sumsq=None if task_ob_stat.count == 0 else task_ob_stat.sumsq,
-                ob_count=task_ob_stat.count
+                ob_count=task_ob_stat.count,
+                time_for_result=time.time()-time_for_result_s,
+                times_per_job=times_per_job
             ))
