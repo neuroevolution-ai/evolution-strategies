@@ -19,9 +19,10 @@ RUN conda install --quiet --yes \
     'matplotlib' \
     'gast==0.2.2'
 
-RUN conda install --yes -c intel 'numpy==1.16.4' 'tensorflow'
-# Use pip for packages that cannot be installed with conda
+# Use pip for packages that cannot be installed with conda and for TensorFlow and NumPy becaue we do not want the version with MKL
 RUN pip install --quiet \
+    numpy==1.16.4 \
+    tensorflow \
     gym \
     roboschool
 
@@ -35,5 +36,6 @@ ADD --chown=jovyan:root . work/evolution-strategies/
 
 WORKDIR work/evolution-strategies/
 
-# Run jupyter notebook with a fake display to allow rendering in roboschool TODO github issue reference
-CMD ["xvfb-run", "-a", "start-notebook.sh"]
+# Run jupyter notebook with a fake display to allow rendering in roboschool as suggested here:
+# https://github.com/openai/gym#rendering-on-a-server
+CMD ["xvfb-run", "-s", "-screen 0 1400x900x24", "start-notebook.sh"]
