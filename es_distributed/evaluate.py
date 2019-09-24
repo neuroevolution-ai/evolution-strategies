@@ -120,7 +120,8 @@ def parse_log_to_csv(log_file, csv_file):
         if '**********' in line:
             temp = [line[2]]
             groups.append(temp)
-        elif '----------------------------------' in line or 'snapshot' in line:
+        elif len(line) == 1 or len(line) == 3:
+            # Separate line or Saved snapshot string
             continue
 
         else:
@@ -149,14 +150,18 @@ def parse_log_to_csv(log_file, csv_file):
                  'ResultsSkippedFrac',
                  'ObCount',
                  'TimeElapsedThisIter',
-                 'TimeElapsed']
+                 'TimeElapsed',
+                 'TimePerMutationMin',
+                 'TimePerMutationMax',
+                 'TimePerMutationMean',
+                 'TimePerMutationCount']
 
     writer.writerow(head_row)
 
     rows = []
     rows.append(head_row)
     for generation in groups:
-        if len(generation) != 22: continue
+        if len(generation) != 26: continue
 
         # Throw out save_directory and distinction line
         row = []
