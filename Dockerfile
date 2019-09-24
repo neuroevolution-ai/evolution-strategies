@@ -17,7 +17,9 @@ USER $NB_USER
 
 RUN conda install --quiet --yes \
     'matplotlib' \
-    'gast==0.2.2'
+    'gast==0.2.2' \
+    'pandas' \
+    'ipywidgets'
 
 # Use pip for packages that cannot be installed with conda and for TensorFlow and NumPy becaue we do not want the version with MKL
 RUN pip install --quiet \
