@@ -27,6 +27,6 @@ ADD . /home/evolution-strategies/
 
 WORKDIR /home/evolution-strategies/
 
-ADD gym_forward_walker.py /usr/local/lib/python3.5/dist-packages/roboschool/gym_forward_walker.py
+#ADD gym_forward_walker.py /usr/local/lib/python3.5/dist-packages/roboschool/gym_forward_walker.py
 
 CMD ["/bin/bash"]
