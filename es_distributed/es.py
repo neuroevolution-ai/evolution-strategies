@@ -220,7 +220,7 @@ def run_master(master_redis_cfg, log_dir, exp):
                         ob_stat.increment(result.ob_sum, result.ob_sumsq, result.ob_count)
                         ob_count_this_batch += result.ob_count
 
-                    times_per_mutation += result.times_per_job
+                    times_per_mutation += result.times_per_mutation
                 else:
                     num_results_skipped += 1
 
