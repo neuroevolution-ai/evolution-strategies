@@ -19,7 +19,7 @@ def run_policy(env_id, policy_file, record, stochastic):
     with tf.Session():
         pi = MujocoPolicy.Load(policy_file)
         # while True:
-        rews, t = pi.rollout(env, render=False, random_stream=np.random if stochastic else None)
+        rews, t, _ = pi.rollout(env, render=False, random_stream=np.random if stochastic else None)
         print('return={:.4f} len={}'.format(rews.sum(), t))
 
         rews = np.array(rews, dtype=np.float32)
@@ -166,7 +166,11 @@ def parse_log_to_csv(log_file, csv_file):
                  'TimeGetNoiseMin',
                  'TimeGetNoiseMax',
                  'TimeGetNoiseMean',
-                 'TimeGetNoiseCount' ]
+                 'TimeGetNoiseCount',
+                 'TimePredictMin',
+                 'TimePredictMax',
+                 'TimePredictMean',
+                 'TimePredictCount']
 
     writer.writerow(head_row)
 
@@ -174,7 +178,7 @@ def parse_log_to_csv(log_file, csv_file):
     rows.append(head_row)
     for generation in groups:
         print(len(generation))
-        if len(generation) != 38: continue
+        if len(generation) != 42: continue
 
         # Throw out save_directory and distinction line
         row = []
