@@ -4,6 +4,7 @@ import pickle
 import h5py
 import numpy as np
 import tensorflow as tf
+import time
 
 from . import tf_util as U
 
@@ -70,12 +71,15 @@ class Policy:
         env_timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
         timestep_limit = env_timestep_limit if timestep_limit is None else min(timestep_limit, env_timestep_limit)
         rews = []
+        times_predict = []
         t = 0
         if save_obs:
             obs = []
         ob = env.reset()
         for _ in range(timestep_limit):
-            ac = self.act(ob[None], random_stream=random_stream)[0]
+            ac, time_predict = self.act(ob[None], random_stream=random_stream)
+            ac = ac[0]
+            times_predict.append(time_predict)
             if save_obs:
                 obs.append(ob)
             ob, rew, done, _ = env.step(ac)
@@ -87,8 +91,8 @@ class Policy:
                 break
         rews = np.array(rews, dtype=np.float32)
         if save_obs:
-            return rews, t, np.array(obs)
-        return rews, t
+            return rews, t, np.array(obs), times_predict
+        return rews, t, times_predict
 
     def act(self, ob, random_stream=None):
         raise NotImplementedError
@@ -194,10 +198,12 @@ class MujocoPolicy(Policy):
         return a
 
     def act(self, ob, random_stream=None):
+        time_predict_s = time.time()
         a = self._act(ob)
+        time_predict_e = time.time() - time_predict_s
         if random_stream is not None and self.ac_noise_std != 0:
             a += random_stream.randn(*a.shape) * self.ac_noise_std
-        return a
+        return a, time_predict_e
 
     @property
     def needs_ob_stat(self):

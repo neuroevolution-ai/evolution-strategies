@@ -20,7 +20,8 @@ Result = namedtuple('Result', [
     'eval_return', 'eval_length',
     'ob_sum', 'ob_sumsq', 'ob_count',
     'times_per_mutation',
-    'times_set_flat', 'times_sample', 'times_get_noise'
+    'times_set_flat', 'times_sample', 'times_get_noise',
+    'times_predict'
 ])
 
 
@@ -187,6 +188,7 @@ def run_master(master_redis_cfg, log_dir, exp):
 
         times_per_mutation = []
         times_set_flat, times_sample, times_get_noise = [], [], []
+        times_predict = []
         while num_episodes_popped < config.episodes_per_batch:# or num_timesteps_popped < config.timesteps_per_batch:
             # Wait for a result
             task_id, result = master.pop_result()
@@ -202,6 +204,7 @@ def run_master(master_redis_cfg, log_dir, exp):
                 if task_id == curr_task_id:
                     eval_rets.append(result.eval_return)
                     eval_lens.append(result.eval_length)
+                    times_predict += result.times_predict
             else:
                 # The real shit
                 assert (result.noise_inds_n.ndim == 1 and
@@ -226,6 +229,7 @@ def run_master(master_redis_cfg, log_dir, exp):
                     times_set_flat += result.times_set_flat
                     times_sample += result.times_sample
                     times_get_noise += result.times_get_noise
+                    times_predict += result.times_predict
                 else:
                     num_results_skipped += 1
 
@@ -319,6 +323,11 @@ def run_master(master_redis_cfg, log_dir, exp):
         tlogger.record_tabular("TimeGetNoiseMean", np.mean(times_get_noise))
         tlogger.record_tabular("TimeGetNoiseCount", len(times_get_noise))
 
+        tlogger.record_tabular("TimePredictMin", np.amin(times_predict))
+        tlogger.record_tabular("TimePredictMax", np.amax(times_predict))
+        tlogger.record_tabular("TimePredictMean", np.mean(times_predict))
+        tlogger.record_tabular("TimePredictCount", len(times_predict))
+
         tlogger.dump_tabular()
 
         if config.snapshot_freq != 0 and curr_task_id % config.snapshot_freq == 0:
@@ -334,12 +343,12 @@ def run_master(master_redis_cfg, log_dir, exp):
 
 def rollout_and_update_ob_stat(policy, env, timestep_limit, rs, task_ob_stat, calc_obstat_prob):
     if policy.needs_ob_stat and calc_obstat_prob != 0 and rs.rand() < calc_obstat_prob:
-        rollout_rews, rollout_len, obs = policy.rollout(
+        rollout_rews, rollout_len, obs, times_predict = policy.rollout(
             env, timestep_limit=timestep_limit, save_obs=True, random_stream=rs)
         task_ob_stat.increment(obs.sum(axis=0), np.square(obs).sum(axis=0), len(obs))
     else:
-        rollout_rews, rollout_len = policy.rollout(env, timestep_limit=timestep_limit, random_stream=rs)
-    return rollout_rews, rollout_len
+        rollout_rews, rollout_len, times_predict = policy.rollout(env, timestep_limit=timestep_limit, random_stream=rs)
+    return rollout_rews, rollout_len, times_predict
 
 
 def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
@@ -363,7 +372,7 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
         if rs.rand() < config.eval_prob:
             # Evaluation: noiseless weights and noiseless actions
             policy.set_trainable_flat(task_data.params)
-            eval_rews, eval_length = policy.rollout(env)  # eval rollouts don't obey task_data.timestep_limit
+            eval_rews, eval_length, times_predict = policy.rollout(env)  # eval rollouts don't obey task_data.timestep_limit
             eval_return = eval_rews.sum()
             logger.info('Eval result: task={} return={:.3f} length={}'.format(task_id, eval_return, eval_length))
             worker.push_result(task_id, Result(
@@ -380,7 +389,8 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
                 times_per_mutation=None,
                 times_set_flat=None,
                 times_sample=None,
-                times_get_noise=None
+                times_get_noise=None,
+                times_predict=times_predict
             ))
         else:
             # Rollouts with noise
@@ -388,6 +398,7 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
             task_ob_stat = RunningStat(env.observation_space.shape, eps=0.)  # eps=0 because we're incrementing only
 
             times_per_mutation, times_set_flat, times_sample, times_get_noise = [], [], [], []
+            times_predict = []
 
             while not noise_inds or time.time() - task_tstart < min_task_runtime:
                 time_sample_s = time.time()
@@ -403,7 +414,7 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
                 times_set_flat.append(time.time() - time_set_flat_s)
 
                 time_per_mutation_s = time.time()
-                rews_pos, len_pos = rollout_and_update_ob_stat(
+                rews_pos, len_pos, times_predict_pos = rollout_and_update_ob_stat(
                     policy, env, task_data.timestep_limit, rs, task_ob_stat, config.calc_obstat_prob)
                 times_per_mutation.append(time.time() - time_per_mutation_s)
 
@@ -412,7 +423,7 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
                 times_set_flat.append(time.time() - time_set_flat_s)
 
                 time_per_mutation_s = time.time()
-                rews_neg, len_neg = rollout_and_update_ob_stat(
+                rews_neg, len_neg, times_predict_neg = rollout_and_update_ob_stat(
                     policy, env, task_data.timestep_limit, rs, task_ob_stat, config.calc_obstat_prob)
                 times_per_mutation.append(time.time() - time_per_mutation_s)
 
@@ -420,6 +431,8 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
                 returns.append([rews_pos.sum(), rews_neg.sum()])
                 signreturns.append([np.sign(rews_pos).sum(), np.sign(rews_neg).sum()])
                 lengths.append([len_pos, len_neg])
+                times_predict += times_predict_pos
+                times_predict += times_predict_neg
 
 
             worker.push_result(task_id, Result(
@@ -436,5 +449,6 @@ def run_worker(relay_redis_cfg, noise, *, min_task_runtime=.2):
                 times_per_mutation=times_per_mutation,
                 times_set_flat=times_set_flat,
                 times_sample=times_sample,
-                times_get_noise=times_get_noise
+                times_get_noise=times_get_noise,
+                times_predict=times_predict
             ))
