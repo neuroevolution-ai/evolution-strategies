@@ -154,14 +154,27 @@ def parse_log_to_csv(log_file, csv_file):
                  'TimePerMutationMin',
                  'TimePerMutationMax',
                  'TimePerMutationMean',
-                 'TimePerMutationCount']
+                 'TimePerMutationCount',
+                 'TimeSetFlatMin',
+                 'TimeSetFlatMax',
+                 'TimeSetFlatMean',
+                 'TimeSetFlatCount',
+                 'TimeSampleMin',
+                 'TimeSampleMax',
+                 'TimeSampleMean',
+                 'TimeSampleCount',
+                 'TimeGetNoiseMin',
+                 'TimeGetNoiseMax',
+                 'TimeGetNoiseMean',
+                 'TimeGetNoiseCount' ]
 
     writer.writerow(head_row)
 
     rows = []
     rows.append(head_row)
     for generation in groups:
-        if len(generation) != 26: continue
+        print(len(generation))
+        if len(generation) != 38: continue
 
         # Throw out save_directory and distinction line
         row = []
