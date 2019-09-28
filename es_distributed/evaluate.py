@@ -19,7 +19,7 @@ def run_policy(env_id, policy_file, record, stochastic):
     with tf.Session():
         pi = MujocoPolicy.Load(policy_file)
         # while True:
-        rews, t, _ = pi.rollout(env, render=False, random_stream=np.random if stochastic else None)
+        rews, t = pi.rollout(env, render=False, random_stream=np.random if stochastic else None)
         print('return={:.4f} len={}'.format(rews.sum(), t))
 
         rews = np.array(rews, dtype=np.float32)
