@@ -15,23 +15,24 @@ RUN apt-get install -y libgl1-mesa-dev libharfbuzz0b libpcre3-dev libqt5x11extra
 # Switch back to unprivileged user for python packages. User is defined in base docker image
 USER $NB_USER
 
+# NumPy has changed something in version 1.17+ which causes import errors in TensorFlow. Until this fix is merged
+# use a slightly older version of NumPy, same with gast
 RUN conda install --quiet --yes \
-    'matplotlib' \
+    'tensorflow' \
+    'numpy==1.16.4' \
     'gast==0.2.2' \
+    'matplotlib' \
     'pandas' \
     'ipywidgets'
-
-# Use pip for packages that cannot be installed with conda and for TensorFlow and NumPy becaue we do not want the version with MKL
-RUN pip install --quiet \
-    numpy==1.16.4 \
-    tensorflow \
-    gym \
-    roboschool
 
 RUN conda clean --yes --all -f && \
     fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER
 
+# Roboschool is deprecated after version 1.0.48
+RUN pip install --quiet \
+    gym \
+    roboschool==1.0.48
 
 # $NB_USER == jovyan, docker does not support dynamic substitution in chown
 ADD --chown=jovyan:root . work/evolution-strategies/
