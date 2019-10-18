@@ -42,4 +42,4 @@ WORKDIR work/evolution-strategies/
 
 # Run jupyter notebook with a fake display to allow rendering in roboschool as suggested here:
 # https://github.com/openai/gym#rendering-on-a-server
-CMD ["xvfb-run", "-s", "-screen 0 1400x900x24", "start-notebook.sh"]
+CMD ["xvfb-run", "-s", "-screen 0 1400x900x24", "start-notebook.sh", "--NotebookApp.token=''"]
