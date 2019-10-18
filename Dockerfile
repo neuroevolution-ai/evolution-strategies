@@ -34,7 +34,6 @@ RUN pip install --quiet \
 
 # $NB_USER == jovyan and his group is users, docker does not support dynamic substitution in chown
 ADD --chown=jovyan:users . work/evolution-strategies/
-ADD . work/evolution-strategies/
 
 WORKDIR work/evolution-strategies/
 
