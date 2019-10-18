@@ -12,10 +12,22 @@ The implementation does not use MuJoCo environments and AMI but the [Roboschool]
 
 ### Run built image
 
+# Run with hashed password
+
+The password is hashed and set in the Dockerfile.
+
 `docker run -d -p 8888:8888 evolution-strategies`
 
-To access the notebook run 
+# Run with token authentication
+
+`docker run -d -p 8888:8888 evolution-strategies xvfb-run -s -screen 0 1400x900x24 start-notebook.sh`
+
+Then run
 
 `docker logs --tail 3 container_name`
 
 which will show you the token which was created when starting the jupyter server.
+
+# Run without any security measures
+
+`docker run -d -p 8888:8888 evolution-strategies xvfb-run -s -screen 0 1400x900x24 start-notebook.sh --NotebookApp.token=''`
