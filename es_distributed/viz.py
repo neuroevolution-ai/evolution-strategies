@@ -191,7 +191,7 @@ def visualize_no_redis(policy_files, env_id, jupyter, model):
                 p.join()
 
 
-from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog, QVBoxLayout, QPushButton
+#from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog, QVBoxLayout, QPushButton
 
 @click.command()
 @click.argument('env_id')
@@ -213,13 +213,13 @@ def main(env_id, policies_path, record, stochastic, jupyter, model, extra_kwargs
     #ac = env.action_space
    # os = env.observation_space
 
-    policy_files = [file for file in os.listdir(policies_path) if file.endswith(".h5")]
+    #policy_files = [file for file in os.listdir(policies_path) if file.endswith(".h5")]
     #
-    policy_files.sort()
-    policy_files = [policy_files[25], policy_files[138]]
+    #policy_files.sort()
+    #policy_files = [policy_files[25], policy_files[138]]
     #policy_files = policy_files[::10]
-
-    os.chdir(policies_path)
+    policy_files = [policies_path]
+    #os.chdir(policies_path)
     #
     if not jupyter and not model:
         visualize_no_redis(policy_files, env_id, False, False)
