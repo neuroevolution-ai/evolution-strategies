@@ -4,7 +4,7 @@ FROM jupyter/base-notebook:latest
 USER root
 
 # Map to not existing user for security reasons
-RUN usermod -u 999 $NB_USER
+# RUN usermod -u 999 $NB_USER
 
 # Update the system and install base and roboschool requirements
 RUN apt-get update -y && apt-get install -y git xvfb ffmpeg libgl1-mesa-dev libharfbuzz0b libpcre3-dev libqt5x11extras5
@@ -33,7 +33,7 @@ RUN pip install --quiet \
     roboschool==1.0.48
 
 # $NB_USER == jovyan and his group is users, docker does not support dynamic substitution in chown
-ADD --chown=jovyan:users . work/evolution-strategies/
+# ADD --chown=jovyan:users . work/evolution-strategies/
 
 WORKDIR work/evolution-strategies/
 
