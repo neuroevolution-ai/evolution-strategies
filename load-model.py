@@ -69,4 +69,9 @@ def load_model(model_path):
                       'ObservationNormalizationLayer' : ObservationNormalizationLayer,
                       'DiscretizeActionsUniformLayer' : DiscretizeActionsUniformLayer}
     
-    return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+    try:
+        model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+    except OSError as e:
+        print(e)
+        return None
+    return model
