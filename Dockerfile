@@ -4,7 +4,7 @@ FROM jupyter/base-notebook:latest
 USER root
 
 # Map to your user id on the host to be able to mount a volume where the user inside docker has write access
-RUN usermod -u 1003 $NB_USER
+RUN usermod -u 1000 $NB_USER
 
 # Update the system and install base and roboschool requirements
 RUN apt-get update -y && apt-get install -y git xvfb ffmpeg libgl1-mesa-dev libharfbuzz0b libpcre3-dev libqt5x11extras5
