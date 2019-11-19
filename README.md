@@ -8,13 +8,25 @@ The implementation does not use MuJoCo environments, instead the [Roboschool](ht
 
 ### Build Dockerfile
 
-To be able to modify the data you need to set the user id in line 7 of the Dockerfile to your user id on the host machine. Then run
+A user will be created inside the docker image, which needs to have the same user ID as the one on the host.
+Otherwise the created files, e.g. the training data, cannot be accessed from outside the docker container.
+Therefore set `UID` in the following command to your user ID on the host system.
 
-`docker build -t evolution-strategies .`
+#### Linux
+
+If you are using Linux run `id -u` to get your ID.
+
+#### Windows
+
+In Windows you do not have to change this.
+
+Now you can build the docker image by running the following command inside the root directory of `evolution-strategies`.
+
+`docker build --build-arg UID=$(id -u) -t evolution-strategies .`
 
 ### Run built image
 
-# Run with hashed password
+#### Run with hashed password
 
 The password is hashed and set in the Dockerfile. Currently it is set to `es-jupyter`. If you want to change it, [here](https://jupyter-notebook.readthedocs.io/en/stable/public_server.html#preparing-a-hashed-password) is a guide to hash a password.
 
@@ -22,7 +34,7 @@ The password is hashed and set in the Dockerfile. Currently it is set to `es-jup
 
 You can then access the notebook with your browser at the address `127.0.0.1:8888`.
 
-# Run without any security
+#### Run without any security
 
 If you want to run the Jupyter Notebook without any security measures replace the argument `--NotebookApp.password=...` with
 `--NotebookApp.token=''` in the Dockerfile.

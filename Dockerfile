@@ -1,10 +1,13 @@
 FROM jupyter/base-notebook:latest
 
+
 # Switch to root user to install packages
 USER root
 
-# Map to your user id on the host to be able to mount a volume where the user inside docker has write access
-RUN usermod -u 1000 $NB_USER
+# Map to your user id on the host to be able to mount a volume where the user inside docker has write access, by default
+# this is 1000, can be modified with build arguments
+ARG UID=1000
+RUN usermod -u $UID $NB_USER
 
 # Update the system and install base and roboschool requirements
 RUN apt-get update -y && apt-get install -y git xvfb ffmpeg libgl1-mesa-dev libharfbuzz0b libpcre3-dev libqt5x11extras5 build-essential
@@ -41,3 +44,5 @@ WORKDIR work/evolution-strategies/
 # Run jupyter lab with a fake display to allow rendering in roboschool as suggested here:
 # https://github.com/openai/gym#rendering-on-a-server
 CMD ["xvfb-run", "-s", "-screen 0 1400x900x24", "start.sh", "jupyter", "lab", "--NotebookApp.password='sha1:9eeee5ad359d:b3a4cf67b0e0cbdf8ad4a63d8c2df3702bc26b33'"]
+#ENTRYPOINT ["xvfb-run", "-s", "-screen 0 1400x900x24", "start.sh", "jupyter", "lab"]
+#CMD ["--NotebookApp.password='sha1:9eeee5ad359d:b3a4cf67b0e0cbdf8ad4a63d8c2df3702bc26b33'"]
