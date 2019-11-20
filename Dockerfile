@@ -1,6 +1,5 @@
 FROM jupyter/base-notebook:latest
 
-
 # Switch to root user to install packages
 USER root
 
@@ -37,6 +36,8 @@ RUN pip install --quiet \
     pybullet
 
 WORKDIR work/evolution-strategies/
+
+ADD launch.sh .
 
 # Run jupyter lab with a fake display to allow rendering in roboschool as suggested here:
 # https://github.com/openai/gym#rendering-on-a-server
