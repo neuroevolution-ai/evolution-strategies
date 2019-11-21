@@ -37,8 +37,9 @@ RUN pip install --quiet \
 
 WORKDIR work/evolution-strategies/
 
+ADD hashed_password.txt .
 ADD launch.sh .
 
 # Run jupyter lab with a fake display to allow rendering in roboschool as suggested here:
 # https://github.com/openai/gym#rendering-on-a-server
-CMD ["xvfb-run", "-a", "-s='-screen 0 1400x900x24'", "start.sh", "jupyter", "lab"]
+CMD ["/bin/bash", "launch.sh"]
