@@ -3,11 +3,6 @@ FROM jupyter/base-notebook:latest
 # Switch to root user to install packages
 USER root
 
-# Map to your user id on the host to be able to mount a volume where the user inside docker has write access, by default
-# this is 1000, can be modified with build arguments
-ARG UID=1000
-RUN usermod -u $UID $NB_USER
-
 # Update the system and install base and roboschool requirements
 RUN apt-get update -y && apt-get install -y git xvfb ffmpeg libgl1-mesa-dev libharfbuzz0b libpcre3-dev libqt5x11extras5 build-essential
 

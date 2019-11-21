@@ -6,20 +6,37 @@ The implementation does not use MuJoCo environments, instead the [Roboschool](ht
 
 ## Installation
 
+### Set password
+
+For security purposes, the Jupyter Lab uses password authentication. To set a password run `generate_password.sh`.
+This will generate a SHA-1 hash and saves it to `hashed_password.txt`. Now the Dockerfile can be built, which will
+use this new password.
+
+If you do not want any security measurements (which is not recommended, since the Jupyter Lab allows arbitrary code
+execution), then build the Dockerfile as in TODO reference
+and run the container like in TODO reference
+
 ### Build Dockerfile
 
-A user will be created inside the docker image, which needs to have the same user ID as the one on the host.
+To build the docker image run the following command inside the root directory of `evolution-strategies`.
+
+`docker build -t evolution-strategies .`
+
+### Start the container
+
+A user was created inside the docker image, which needs to have the same user ID as the one on the host.
 Otherwise the created files, e.g. the training data, cannot be accessed from outside the docker container.
 Therefore the `UID` argument in the following command is set to your user ID on the host system.
 
-The docker image can be built by running the following command inside the root directory of
-`evolution-strategies`.
-
-`docker build --build-arg UID=$(id -u) -t evolution-strategies .`
-
-### Run built docker image
 
 #### Run default image with token authentication
+TODO:
+Map to your user id on the host to be able to mount a volume where the user inside docker has write access, by default
+this is 1000, can be modified with build arguments
+
+`docker run --user root -e NB_UID=$(id -u) -e NB_GID=$(id -g) -d -p 8888:8888 -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies:testing`
+
+`docker run --user $(id -u) --group-add users -d -p 8888:8888 -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies`
 
 By default, Jupyter uses tokens to authenticate users for accessing the notebooks. By running
 
