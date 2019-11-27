@@ -3,9 +3,6 @@ FROM jupyter/base-notebook:latest
 # Switch to root user to install packages
 USER root
 
-# Map to your user id on the host to be able to mount a volume where the user inside docker has write access
-RUN usermod -u 1000 $NB_USER
-
 # Update the system and install base and roboschool requirements
 RUN apt-get update -y && apt-get install -y git xvfb ffmpeg libgl1-mesa-dev libharfbuzz0b libpcre3-dev libqt5x11extras5 build-essential
 
@@ -33,11 +30,9 @@ RUN pip install --quiet \
     roboschool==1.0.48 \
     pybullet
 
-# $NB_USER == jovyan and his group is users, docker does not support dynamic substitution in chown
-# ADD --chown=jovyan:users . work/evolution-strategies/
-
 WORKDIR work/evolution-strategies/
 
-# Run jupyter lab with a fake display to allow rendering in roboschool as suggested here:
-# https://github.com/openai/gym#rendering-on-a-server
-CMD ["xvfb-run", "-s", "-screen 0 1400x900x24", "start.sh", "jupyter", "lab", "--NotebookApp.password='sha1:9eeee5ad359d:b3a4cf67b0e0cbdf8ad4a63d8c2df3702bc26b33'"]
+ADD hashed_password.txt .
+ADD launch.sh .
+
+CMD ["/bin/bash", "launch.sh"]
