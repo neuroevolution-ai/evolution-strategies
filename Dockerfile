@@ -35,6 +35,4 @@ WORKDIR work/evolution-strategies/
 ADD hashed_password.txt .
 ADD launch.sh .
 
-# Run jupyter lab with a fake display to allow rendering in roboschool as suggested here:
-# https://github.com/openai/gym#rendering-on-a-server
 CMD ["/bin/bash", "launch.sh"]

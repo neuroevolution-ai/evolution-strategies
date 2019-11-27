@@ -1,4 +1,4 @@
-# Using evolution strategies to train environments
+# Using evolution strategies to train reinforcement learning environments
 
 This is a fork of the implementation of the algorithm described in
 [Evolution Strategies as a Scalable Alternative to Reinforcement Learning](https://arxiv.org/abs/1703.03864)
@@ -40,8 +40,8 @@ to build a Docker image, which will use this new password.
 #### Use without any security measurements
 
 If you do not want any security measurements (which is not recommended, since the Jupyter Lab allows arbitrary code
-execution), then build the Dockerfile as in TODO reference
-and run the container like in TODO reference
+execution), then you do not need to set a password. Just build the image from the Dockerfile and run the container
+as explained in [Run without any security measurements](#run-without-any-security-measurements).
 
 ### Build Docker image
 
