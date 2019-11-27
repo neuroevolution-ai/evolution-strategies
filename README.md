@@ -1,72 +1,74 @@
-# Distributed evolution
+# Using evolution strategies to train environments
 
-This is a fork of the implementation of the algorithm described in [Evolution Strategies as a Scalable Alternative to Reinforcement Learning](https://arxiv.org/abs/1703.03864) (Tim Salimans, Jonathan Ho, Xi Chen, Ilya Sutskever).
+This is a fork of the implementation of the algorithm described in
+[Evolution Strategies as a Scalable Alternative to Reinforcement Learning](https://arxiv.org/abs/1703.03864)
+(Tim Salimans, Jonathan Ho, Xi Chen, Ilya Sutskever).
 
-The implementation does not use MuJoCo environments, instead the [Roboschool](https://github.com/openai/roboschool/) from OpenAI. 
+The implementation currently supports all environments which are shipped with the OpenAI Gym, as well as the
+[Roboschool](https://github.com/openai/roboschool/) from OpenAI and the
+[PyBullet Robotics Environments](https://github.com/openai/gym/blob/master/docs/environments.md#pybullet-robotics-environments).
+
 
 ## Installation
 
-### Set password
+The implementation uses Jupyter Notebooks. To run them, a Dockerfile is provided to build a Docker image. Inside this image
+all dependencies which are needed will be installed. Then a Docker container can be created and started,
+which will start a Jupyter Lab server at the address `127.0.0.1:8888`. From there the Notebooks can be accessed and
+tested with a browser.
 
-For security purposes, the Jupyter Lab uses password authentication. To set a password run `generate_password.sh`.
-This will generate a SHA-1 hash and saves it to `hashed_password.txt`. Now the Dockerfile can be built, which will
-use this new password.
+### Prerequisites
+
+Since the implementation provides a Dockerfile, only Docker is needed on the host.
+
+If you want to test the Notebooks without using Docker you can look into the Dockerfile to find out which packages 
+need to be installed.
+
+#### Set a password
+
+For security purposes, the Jupyter Lab uses password authentication. To set a password run
+
+`./generate_password.sh`.
+
+in the main directory of this repository. If there is a `permission denied` error, the script needs execution rights.
+To add them, run 
+
+`chmod u+x generate_password.sh`.
+
+This will generate a SHA-1 hash of the password and save it to `hashed_password.txt`. Now the Dockerfile can be used
+to build a Docker image, which will use this new password.
+
+#### Use without any security measurements
 
 If you do not want any security measurements (which is not recommended, since the Jupyter Lab allows arbitrary code
 execution), then build the Dockerfile as in TODO reference
 and run the container like in TODO reference
 
-### Build Dockerfile
+### Build Docker image
 
-To build the docker image run the following command inside the root directory of `evolution-strategies`.
+To build the Docker image run the following command inside the root directory of `evolution-strategies`.
 
 `docker build -t evolution-strategies .`
 
-### Start the container
+The Docker image will be created and called _evolution-strategies_.
 
-A user was created inside the docker image, which needs to have the same user ID as the one on the host.
-Otherwise the created files, e.g. the training data, cannot be accessed from outside the docker container.
-Therefore the `UID` argument in the following command is set to your user ID on the host system.
+### Start the Docker container
 
+#### Use the previously set password
 
-#### Run default image with token authentication
-TODO:
-Map to your user id on the host to be able to mount a volume where the user inside docker has write access, by default
-this is 1000, can be modified with build arguments
+After building the Docker image you can create and start the Docker container with
 
-`docker run --user root -e NB_UID=$(id -u) -e NB_GID=$(id -g) -d -p 8888:8888 -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies:testing`
+`docker run --user $(id -u) --group-add users -d -p 8888:8888 -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies`.
 
-`docker run --user $(id -u) --group-add users -d -p 8888:8888 -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies`
+This will automatically set the user ID inside the container to the one you have on the host. The container is started
+in the background and the _evolution-strategies_ directory on the host gets mounted inside the container.
 
-By default, Jupyter uses tokens to authenticate users for accessing the notebooks. By running
+Now the Jupyter Lab is up and running and can be accessed at `127.0.0.1:8888`.
 
-`docker run -d -p 8888:8888 --name es-token -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies`
+#### Run without any security measurements
 
-a Jupyter Lab will be started. To access it, run `docker logs es-token`. This will print the log when starting 
-the container. From there follow the link with the address `127.0.0.1:8888` which automatically uses the generated 
-token to log in.
+If you want to run the Jupyter Lab without any security measurements start the Docker container with
 
-For multiple accesses to the lab this requires having a cookie, which is set automatically. Alternatively one 
-can define a password by going to `127.0.0.1:8888` directly and set a password using the token which is retrieved
-from the logs.
+`docker run --user $(id -u) --group-add users -d -p 8888:8888 -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies xvfb-run -a -s='-screen 0 1400x900x24' start.sh jupyter lab --NotebookApp.token=''`
 
-#### Run with hashed password
-
-If you want to use a password directly run the following command.
-
-`docker run -d -p 8888:8888 --name es-password -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies xvfb-run -a -s='-screen 0 1400x900x24' start.sh jupyter lab --NotebookApp.password='sha1:9eeee5ad359d:b3a4cf67b0e0cbdf8ad4a63d8c2df3702bc26b33'`
-
-This will start the container with a password already set. Currently this is `es-jupyter`. It is recommended to change it
-if you are planning on using this method. A guide to generate a password can be found 
-[here](https://jupyter-notebook.readthedocs.io/en/stable/public_server.html#preparing-a-hashed-password). It requires
-having Python and Jupyter installed. Then the new hash must be set in the command above in the `--NotebookApp.password`
-parameter.  
-
-#### Run without any security
-
-If you want to run the Jupyter Notebook without any security measures start the docker container with
-
-`docker run -d -p 8888:8888 --name es-open -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies xvfb-run -a -s='-screen 0 1400x900x24' start.sh jupyter lab --NotebookApp.token=''`
-
-Be aware that any user on your network can access the container and execute commands on it, which in turn can be executed
-on the host machine. It is therefore recommended to use either a password or the token mechanism.
+Be aware that potentially any user on your network can access the container and execute commands on it, which in turn
+can be executed on the host machine. It is therefore recommended to use the password.
