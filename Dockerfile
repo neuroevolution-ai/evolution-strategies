@@ -21,14 +21,14 @@ RUN conda clean --yes --all -f && \
     fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER
 
-# Roboschool is deprecated after version 1.0.48
 # Install TensorFlow and NumPy with pip to prevent using the MKL version which in this implementation is slower
 RUN pip install --quiet \
-    tensorflow==1.14.0 \
-    numpy==1.16.4 \
-    gym \
-    roboschool==1.0.48 \
-    pybullet
+    numpy==1.17.2 \
+    tensorflow==2.0.0 \
+    keras==2.3.1 \
+    gym[atari] \
+    opencv-python \
+    neat-python
 
 WORKDIR work/evolution-strategies/
 
