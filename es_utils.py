@@ -1,10 +1,70 @@
 import json
+from collections import namedtuple
 import os
 
 from pathlib import Path
 
+Config = namedtuple('Config', [
+    'env_id',
+    'population_size',
+    'timesteps_per_gen',
+    'num_workers',
+    'learning_rate',
+    'noise_stdev',
+    'snapshot_freq',
+    'return_proc_mode',
+    'calc_obstat_prob',
+    'l2coeff',
+    'eval_prob'
+])
+
+Optimizations = namedtuple('Optimizations', [
+    'mirrored_sampling',
+    'fitness_shaping',
+    'weight_decay',
+    'discretize_actions',
+    'gradient_optimizer',
+    'observation_normalization',
+    'divide_by_stdev'
+])
+
+ModelStructure = namedtuple('ModelStructure', [
+    'ac_noise_std',
+    'ac_bins',
+    'hidden_dims',
+    'nonlin_type',
+    'optimizer',
+    'optimizer_args'
+])
+
 class InvalidTrainingError(Exception):
+    # TODO own file
     pass
+
+def validate_config(config_file):
+    # TODO support dict as input or make multiple methods for optimizations, config, model_structure
+    assert isinstance(config_file, os.DirEntry)
+    with open(config_file.path, encoding='utf-8') as f:
+        try:
+            config_json = json.load(f)
+        except json.JSONDecodeError:
+            raise InvalidTrainingError("The config file {} cannot be parsed.".format(config_file.path))
+
+    optimization_dict = config_json["optimizations"]
+    assert all(isinstance(v, bool) for v in optimization_dict.values())
+    # TODO catch assertion violation
+    optimizations = Optimizations(**optimization_dict)
+    # TODO rest of config
+
+    optimizations = Optimizations._make(config_json["optimizations"].values())
+    opt2 = Optimizations._make([True, True, True, True, True, True, True])
+    config = Config._make(config_json["config"].values())
+    model_structure = ModelStructure._make(config_json["model_structure"].values())
+
+
+
+    # validate every part of config
+    # return optimizations, model_structure, config object
 
 def index_training_folder(training_folder):
     '''
@@ -38,9 +98,7 @@ def index_training_folder(training_folder):
             elif entry.name == "config.json" and entry.is_file():
                 config_file = entry
 
-
-
-
+    validate_config(config_file)
 
     p = Path(training_folder)
 
@@ -52,11 +110,7 @@ def index_training_folder(training_folder):
     with config_file.open() as f:
         test = f
 
-
     model_files = list(p.glob("*.h5"))
-
-
-
 
     index = {}
     # for root, dirs, files in os.walk(main_directory):
@@ -119,21 +173,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-def validate_config(config_file):
-    assert isinstance(config_file, os.DirEntry)
-    with open(config_file.path, encoding='utf-8') as f:
-        try:
-            config = json.load(f)
-        except json.JSONDecodeError:
-            raise InvalidTrainingError("The config file {} cannot be parsed.".format(config_file.path))
-
-    # validate every part of config
-    # return optimizations, model_structure, config object
-
-
-
 
 class TrainingRun:
     pass
