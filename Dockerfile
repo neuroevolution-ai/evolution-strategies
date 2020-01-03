@@ -12,7 +12,6 @@ USER $NB_USER
 # NumPy has changed something in version 1.17+ which causes import errors in TensorFlow. Until this fix is merged
 # use a slightly older version of NumPy, same with gast
 RUN conda install --quiet --yes \
-    'gast==0.2.2' \
     'matplotlib' \
     'pandas' \
     'ipywidgets'
@@ -24,8 +23,8 @@ RUN conda clean --yes --all -f && \
 # Roboschool is deprecated after version 1.0.48
 # Install TensorFlow and NumPy with pip to prevent using the MKL version which in this implementation is slower
 RUN pip install --quiet \
-    tensorflow==1.14.0 \
-    numpy==1.16.4 \
+    tensorflow \
+    numpy \
     gym \
     roboschool==1.0.48 \
     pybullet

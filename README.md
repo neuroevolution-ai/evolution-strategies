@@ -72,3 +72,14 @@ If you want to run the Jupyter Lab without any security measurements start the D
 
 Be aware that potentially any user on your network can access the container and execute commands on it, which in turn
 can be executed on the host machine. It is therefore recommended to use the password.
+
+#### Running multiple containers
+
+If you want to run multiple Jupyter Lab instances through these containers you need to change the port that is mapped
+from the host to the container. All Jupyter Lab instances run on port 8888 inside the container therefore choose another
+port on the host. This can be done by changing the first number in the `-p` argument in the run commands.
+
+For example, you already have a container started with `-p 8888:8888`. You can access the container with `127.0.0.1:8888`.
+When you run another instance the new instance cannot be reached since port `8888` is already used on the host. Change
+the run command for example to use `-p 8889:8888` and start the container. The new instance can now be reached on 
+`127.0.0.1:8889` on the host.
