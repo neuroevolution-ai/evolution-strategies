@@ -1,13 +1,17 @@
 import json
-from collections import namedtuple
+import gym
 import os
 
-from pathlib import Path
+from collections import namedtuple
 from enum import Enum
+from pathlib import Path
 
-class GradientOptimizer(Enum):
+class ConfigValues(Enum):
     OPTIMIZER_ADAM = 'adam'
     OPTIMIZER_SGD = 'sgd'
+    RETURN_PROC_MODE_CR = 'centered_rank'
+    RETURN_PROC_MODE_SIGN = 'sign'
+    RETURN_PROC_MODE_CR_SIGN = 'centered_sign_rank'
 
 Config = namedtuple('Config', [
     'env_id',
@@ -99,7 +103,7 @@ def validate_config(config_input):
         if optimizations.gradient_optimizer:
             # Other values in the optimizer_args dict are not checked only the mandatory stepsize is there
             # Could potentially lead to false arguments. They are handled in the Optimizer class
-            assert model_structure.optimizer == GradientOptimizer.OPTIMIZER_ADAM or model_structure.optimizer == GradientOptimizer.OPTIMIZER_SGD
+            assert model_structure.optimizer == ConfigValues.OPTIMIZER_ADAM or model_structure.optimizer == ConfigValues.OPTIMIZER_SGD
             stepsize = model_structure.optimizer_args['stepsize']
             assert stepsize > 0
         if optimizations.discretize_actions:
@@ -109,20 +113,48 @@ def validate_config(config_input):
     except TypeError or AssertionError:
         raise InvalidTrainingError("One or more of the given values for the model structure is not valid.")
 
+    # Load the entry for the config
+    try:
+        _config_dict = config_dict["config"]
+    except KeyError:
+        raise InvalidTrainingError("The loaded config does not have an entry for the configuration.")
 
+    # Again, create the Config object first before validating values
+    try:
+        config = Config(**_config_dict)
+    except TypeError:
+        raise InvalidTrainingError("Cannot initialize the Config object from {}".format(_config_dict))
 
+    # Validate values for the config
+    try:
+        # Testing if the ID is valid by creating an environment with it
+        gym.make(config.env_id)
+    except:
+        raise InvalidTrainingError("The provided environment ID {} is invalid.".format(config.env_id))
 
-    # TODO rest of config
+    try:
+        assert config.population_size > 0
+        assert config.timesteps_per_gen > 0
+        assert config.num_workers > 0
+        assert config.learning_rate > 0
+        assert config.noise_stdev != 0
+        assert config.snapshot_freq >= 0
+        assert config.eval_prob >= 0
 
-    optimizations = Optimizations._make(config_dict["optimizations"].values())
-    opt2 = Optimizations._make([True, True, True, True, True, True])
-    config = Config._make(config_dict["config"].values())
-    model_structure = ModelStructure._make(config_dict["model_structure"].values())
+        assert (config.return_proc_mode == ConfigValues.RETURN_PROC_MODE_CR
+                or config.return_proc_mode == ConfigValues.RETURN_PROC_MODE_SIGN
+                or config.return_proc_mode == ConfigValues.RETURN_PROC_MODE_CR_SIGN)
 
+        if optimizations.observation_normalization:
+            assert config.calc_obstat_prob > 0
 
+        if optimizations.gradient_optimizer:
+            assert config.l2coeff > 0
 
-    # validate every part of config
-    # return optimizations, model_structure, config object
+    except TypeError or AssertionError:
+        raise InvalidTrainingError("One or more of the given values for the config is not valid.")
+
+    return optimizations, config, model_structure
 
 def index_training_folder(training_folder):
     '''
