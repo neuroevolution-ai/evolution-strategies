@@ -3,6 +3,11 @@ from collections import namedtuple
 import os
 
 from pathlib import Path
+from enum import Enum
+
+class GradientOptimizer(Enum):
+    OPTIMIZER_ADAM = 'adam'
+    OPTIMIZER_SGD = 'sgd'
 
 Config = namedtuple('Config', [
     'env_id',
@@ -41,25 +46,78 @@ class InvalidTrainingError(Exception):
     # TODO own file
     pass
 
-def validate_config(config_file):
+def validate_config(config_input):
     # TODO support dict as input or make multiple methods for optimizations, config, model_structure
-    assert isinstance(config_file, os.DirEntry)
-    with open(config_file.path, encoding='utf-8') as f:
-        try:
-            config_json = json.load(f)
-        except json.JSONDecodeError:
-            raise InvalidTrainingError("The config file {} cannot be parsed.".format(config_file.path))
+    if isinstance(config_input, os.DirEntry):
+        with open(config_input.path, encoding='utf-8') as f:
+            try:
+                config_dict = json.load(f)
+            except json.JSONDecodeError:
+                raise InvalidTrainingError("The config file {} cannot be parsed.".format(config_input.path))
+    elif isinstance(config_input, dict):
+        config_dict = config_input
+    else:
+        # TODO raise InvalidTrainingError maybe
+        return
 
-    optimization_dict = config_json["optimizations"]
-    assert all(isinstance(v, bool) for v in optimization_dict.values())
-    # TODO catch assertion violation
-    optimizations = Optimizations(**optimization_dict)
+    # Load the entry for the optimizations
+    try:
+        optimization_dict = config_dict["optimizations"]
+    except KeyError:
+        raise InvalidTrainingError("The loaded config does not have an entry for optimizations.")
+
+    # Check if the values for the optimizations are valid
+    if not all(isinstance(v, bool) for v in optimization_dict.values()):
+        raise InvalidTrainingError("The values {} cannot be used to initialize an Optimization object".format(optimization_dict.values()))
+
+    # Create an Optimizations object with the valid values and their keys. The keys have not been checked, they could
+    # be false, too few or too many
+    try:
+        optimizations = Optimizations(**optimization_dict)
+    except TypeError:
+        raise InvalidTrainingError("Cannot initialize the Optimizations object from {}".format(optimization_dict))
+
+    # Load the entry for the model structure
+    try:
+        model_structure_dict = config_dict["model_structure"]
+    except KeyError:
+        raise InvalidTrainingError("The loaded config does not have an entry for the model structure")
+
+    # Create the ModelStructure object first to be able to easier check the values afterwards
+    try:
+        model_structure = ModelStructure(**model_structure_dict)
+    except TypeError:
+        raise InvalidTrainingError("Cannot initialize the ModelStructure object from {}".format(model_structure_dict))
+
+    # Validate values for the ModelStructure object
+    try:
+        assert model_structure.ac_noise_std >= 0
+        assert isinstance(model_structure.hidden_dims, list)
+        assert all(isinstance(entry, int) for entry in model_structure.hidden_dims)
+        assert all(hd > 0 for hd in model_structure.hidden_dims)
+        assert isinstance(model_structure.nonlin_type, str)
+        if optimizations.gradient_optimizer:
+            # Other values in the optimizer_args dict are not checked only the mandatory stepsize is there
+            # Could potentially lead to false arguments. They are handled in the Optimizer class
+            assert model_structure.optimizer == GradientOptimizer.OPTIMIZER_ADAM or model_structure.optimizer == GradientOptimizer.OPTIMIZER_SGD
+            stepsize = model_structure.optimizer_args['stepsize']
+            assert stepsize > 0
+        if optimizations.discretize_actions:
+            assert model_structure.ac_bins > 0
+    except KeyError:
+        raise InvalidTrainingError("The model structure is missing the stepsize for the gradient optimizer.")
+    except TypeError or AssertionError:
+        raise InvalidTrainingError("One or more of the given values for the model structure is not valid.")
+
+
+
+
     # TODO rest of config
 
-    optimizations = Optimizations._make(config_json["optimizations"].values())
-    opt2 = Optimizations._make([True, True, True, True, True, True, True])
-    config = Config._make(config_json["config"].values())
-    model_structure = ModelStructure._make(config_json["model_structure"].values())
+    optimizations = Optimizations._make(config_dict["optimizations"].values())
+    opt2 = Optimizations._make([True, True, True, True, True, True])
+    config = Config._make(config_dict["config"].values())
+    model_structure = ModelStructure._make(config_dict["model_structure"].values())
 
 
 
