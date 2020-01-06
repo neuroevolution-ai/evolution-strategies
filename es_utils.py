@@ -51,6 +51,17 @@ class InvalidTrainingError(Exception):
     pass
 
 def validate_config(config_input):
+    """
+    Creates an Optimizations, ModelStructure and Config object from config_input and validates their attributes.
+
+    config_input must be of type os.DirEntry or dict. It will try to create the respective objects from the dict
+    entries it reads from the input. Afterwards the values get validated. If everything is valid the objects get
+    returned, otherwise an InvalidTrainingError is raised.
+
+    :param config_input: Configuration input of type os.DirEntry or dict
+    :raises InvalidTrainingError: Will be raised when no valid objects can be created
+    :return: A Valid Optimizations, ModelStructure and Config object, in this order
+    """
     # Only os.DirEntry and dict are supported as input files. Could be easily extended if needed
     if isinstance(config_input, os.DirEntry):
         with open(config_input.path, encoding='utf-8') as f:
@@ -86,7 +97,21 @@ def validate_config(config_input):
     except InvalidTrainingError:
         raise
 
+    return optimizations, model_structure, config
+
 def validate_config_objects(optimizations, model_structure, config):
+    """
+    Validates the values of already created configuration objects.
+
+    The inputs must be of Type Optimizations, ModelStructure and Config. If at least one of their values is invalid,
+    a InvalidTrainingError is raised.
+
+    :param optimizations: An object of type Optimizations for which the values shall be validated
+    :param model_structure: An object of type ModelStructure for which the values shall be validated
+    :param config: An object of type Config for which the values shall be validated
+    :raises InvalidTrainingError: When there is at least one invalid value
+    """
+
     if not isinstance(optimizations, Optimizations) or not isinstance(model_structure, ModelStructure) or not isinstance(config, Config):
         raise InvalidTrainingError("One of the given arguments has a false type.")
 
