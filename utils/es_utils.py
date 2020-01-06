@@ -6,8 +6,9 @@ import pandas as pd
 from pathlib import Path
 
 from config_objects import Optimizations, ModelStructure, Config
-from config_values import ConfigValues, LogColumnHeaders
+from config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders
 from es_errors import InvalidTrainingError
+
 
 def validate_config(config_input):
     """
@@ -57,6 +58,7 @@ def validate_config(config_input):
         raise
 
     return optimizations, model_structure, config
+
 
 def validate_config_objects(optimizations, model_structure, config):
     """
@@ -126,6 +128,7 @@ def validate_config_objects(optimizations, model_structure, config):
     except TypeError or AssertionError:
         raise InvalidTrainingError("One or more of the given values for the config is not valid.")
 
+
 def validate_log(log_input):
     """
     Reads a log file into a pandas DataFrame and validates the header columns.
@@ -156,11 +159,43 @@ def validate_log(log_input):
     return log
 
 
-def validate_evaluation(eval_input):
+def validate_evaluation(evaluation_input):
+    """
+    Loads an evaluation from a .csv file into a pandas DataFrame and validates it.
 
-    # Sam as validate_log
+    If it is invalid or not a valid .csv file a None object will be returned and a warning message is printed.
+    Note that after the initial 5 header names, more columns start with Rew_i and Len_i indicating the reward and
+    count of timesteps in the i-th evaluation. These will be not validated.
 
-    pass
+    :param evaluation_input: The file containing an evaluation which shall be validated
+    :return: If the validation is successful a pandas DataFrame, instead None
+    """
+    evaluation = None
+
+    try:
+        evaluation = pd.read_csv(evaluation_input)
+    except pd.errors.EmptyDataError:
+        print("The evaluation file {} is empty. Continuing.".format(evaluation_input))
+    except pd.errors.ParserError:
+        print("The evaluation file {} cannot be parsed. Continuing.".format(evaluation_input))
+    except FileNotFoundError:
+        print("The evaluation file {} does not exist. Continuing.".format(evaluation_input))
+    else:
+        # Due to saving issues the Generation column got duplicated as the first column and is unnamed. Deleting it
+        # here to avoid issues when comparing. TODO remove this when older evaluations are no longer used
+        if "Unnamed: 0" in evaluation:
+            del evaluation["Unnamed: 0"]
+
+        # Compare with the column headers which are set for the whole program, in the right order
+        # Take only the first 5 entries since after that individual reward and lengths are saved which are not validated
+        for a, b in zip(list(evaluation)[:5], [e.value for e in EvaluationColumnHeaders][:5]):
+            if a != b:
+                evaluation = None
+                print("The evaluation file {} does not have valid column headers. Continuing.".format(evaluation_input))
+                break
+
+    return evaluation
+
 
 def index_training_folder(training_folder):
     """
@@ -181,7 +216,6 @@ def index_training_folder(training_folder):
     # -> alles als Objekt speichern
     # 3. Validiere config
 
-
     if not os.path.isdir(training_folder):
         raise InvalidTrainingError("Cannot load training, {} is not a directory.".format(training_folder))
 
@@ -195,11 +229,15 @@ def index_training_folder(training_folder):
                 config_file = entry
             elif entry.name == "log.csv" and entry.is_file():
                 log_file = entry
+            elif entry.name == "evaluation.csv" and entry.is_file():
+                evaluation_file = entry
 
     try:
         optimizations, model_structure, config = validate_config(config_file)
     except InvalidTrainingError:
         raise
+
+    # TODO log and evaluation validation
 
     p = Path(training_folder)
 
@@ -268,12 +306,14 @@ def index_training_folder(training_folder):
     # return [Experiment(config, runs) for (config, runs) in configs_and_runs]
     #
 
+
 def main():
     # training_folder = "training_runs/17_12_2019-11h_24m_28s"
     # index_training_folder(training_folder)
 
-    test_log = "training_runs/17_12_2019-11h_24m_28s/log2.csv"
-    validate_log(test_log)
+    test_log = "training_runs/weights-evaluation/ant-01/21_10_2019-16h_50m_49s/evaluation.csv"
+    validate_evaluation(test_log)
+
 
 if __name__ == "__main__":
     main()
