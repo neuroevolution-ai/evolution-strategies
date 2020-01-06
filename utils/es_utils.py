@@ -2,53 +2,11 @@ import json
 import gym
 import os
 
-from collections import namedtuple
-from enum import Enum
 from pathlib import Path
 
-class ConfigValues(Enum):
-    OPTIMIZER_ADAM = 'adam'
-    OPTIMIZER_SGD = 'sgd'
-    RETURN_PROC_MODE_CR = 'centered_rank'
-    RETURN_PROC_MODE_SIGN = 'sign'
-    RETURN_PROC_MODE_CR_SIGN = 'centered_sign_rank'
-
-Config = namedtuple('Config', [
-    'env_id',
-    'population_size',
-    'timesteps_per_gen',
-    'num_workers',
-    'learning_rate',
-    'noise_stdev',
-    'snapshot_freq',
-    'return_proc_mode',
-    'calc_obstat_prob',
-    'l2coeff',
-    'eval_prob'
-])
-
-Optimizations = namedtuple('Optimizations', [
-    'mirrored_sampling',
-    'fitness_shaping',
-    'weight_decay',
-    'discretize_actions',
-    'gradient_optimizer',
-    'observation_normalization',
-    'divide_by_stdev'
-])
-
-ModelStructure = namedtuple('ModelStructure', [
-    'ac_noise_std',
-    'ac_bins',
-    'hidden_dims',
-    'nonlin_type',
-    'optimizer',
-    'optimizer_args'
-])
-
-class InvalidTrainingError(Exception):
-    # TODO own file
-    pass
+from .config_objects import Optimizations, ModelStructure, Config
+from .config_values import ConfigValues
+from .es_errors import InvalidTrainingError
 
 def validate_config(config_input):
     """
@@ -199,7 +157,10 @@ def index_training_folder(training_folder):
             elif entry.name == "config.json" and entry.is_file():
                 config_file = entry
 
-    validate_config(config_file)
+    try:
+        optimizations, model_structure, config = validate_config(config_file)
+    except InvalidTrainingError:
+        raise
 
     p = Path(training_folder)
 
