@@ -1,5 +1,6 @@
 from collections import namedtuple
 
+
 Config = namedtuple('Config', [
     'env_id',
     'population_size',

@@ -1,12 +1,13 @@
 import json
 import gym
 import os
+import pandas as pd
 
 from pathlib import Path
 
-from .config_objects import Optimizations, ModelStructure, Config
-from .config_values import ConfigValues
-from .es_errors import InvalidTrainingError
+from config_objects import Optimizations, ModelStructure, Config
+from config_values import ConfigValues, LogColumnHeaders
+from es_errors import InvalidTrainingError
 
 def validate_config(config_input):
     """
@@ -125,8 +126,44 @@ def validate_config_objects(optimizations, model_structure, config):
     except TypeError or AssertionError:
         raise InvalidTrainingError("One or more of the given values for the config is not valid.")
 
+def validate_log(log_input):
+    """
+    Reads a log file into a pandas DataFrame and validates the header columns.
+
+    If log_input is not a valid .csv file or the header columns do not match a None object is returned and an error
+    message printed.
+
+    :param log_input: A .csv file with the to be validated log file
+    :return: A pandas DataFrame containing the loaded log if it is valid, None instead
+    """
+    log = None
+
+    try:
+        log = pd.read_csv(log_input)
+    except pd.errors.EmptyDataError:
+        print("The log file {} is empty. Continuing.".format(log_input))
+    except pd.errors.ParserError:
+        print("The log file {} cannot be parsed. Continuing.".format(log_input))
+    except FileNotFoundError:
+        print("The log file {} does not exist. Continuing.".format(log_input))
+    else:
+        # Compare with the column headers which are set for the whole program, in the right order
+        for a, b in zip(list(log), [e.value for e in LogColumnHeaders]):
+            if a != b:
+                log = None
+                print("The log file {} does not have valid column headers. Continuing.".format(log_input))
+                break
+    return log
+
+
+def validate_evaluation(eval_input):
+
+    # Sam as validate_log
+
+    pass
+
 def index_training_folder(training_folder):
-    '''
+    """
     Indexes a given training folder and returns a resulting TrainingRun object.
 
     The function first searches for the config, validates it and creates a dictionary from it. If no valid config
@@ -136,26 +173,28 @@ def index_training_folder(training_folder):
 
     :param training_folder: The folder which contains a started training which shall be loaded
     :return: A TrainingRun object with the attributes set to valid objects found in the training_folder
-    :raises: InvalidTrainingException if the config files is not found or invalid
-    '''
+    :raises InvalidTrainingException: Will be raised if the config files is not found or invalid
+    """
 
     # 1. Check if folder
     # 2. Indexiere Dateien
     # -> alles als Objekt speichern
     # 3. Validiere config
 
-    #return TrainingRun()
 
     if not os.path.isdir(training_folder):
         raise InvalidTrainingError("Cannot load training, {} is not a directory.".format(training_folder))
 
+    model_files = []
+
     with os.scandir(training_folder) as it:
         for entry in it:
             if entry.name.endswith(".h5") and entry.is_file():
-                # TODO
-                pass
+                model_files.append(entry.path)
             elif entry.name == "config.json" and entry.is_file():
                 config_file = entry
+            elif entry.name == "log.csv" and entry.is_file():
+                log_file = entry
 
     try:
         optimizations, model_structure, config = validate_config(config_file)
@@ -230,11 +269,11 @@ def index_training_folder(training_folder):
     #
 
 def main():
-    training_folder = "training_runs/11_11_2019-17h_19m_00s"
-    index_training_folder(training_folder)
+    # training_folder = "training_runs/17_12_2019-11h_24m_28s"
+    # index_training_folder(training_folder)
+
+    test_log = "training_runs/17_12_2019-11h_24m_28s/log2.csv"
+    validate_log(test_log)
 
 if __name__ == "__main__":
     main()
-
-class TrainingRun:
-    pass
