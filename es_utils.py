@@ -51,7 +51,7 @@ class InvalidTrainingError(Exception):
     pass
 
 def validate_config(config_input):
-    # TODO support dict as input or make multiple methods for optimizations, config, model_structure
+    # Only os.DirEntry and dict are supported as input files. Could be easily extended if needed
     if isinstance(config_input, os.DirEntry):
         with open(config_input.path, encoding='utf-8') as f:
             try:
@@ -61,37 +61,38 @@ def validate_config(config_input):
     elif isinstance(config_input, dict):
         config_dict = config_input
     else:
-        # TODO raise InvalidTrainingError maybe
-        return
+        raise InvalidTrainingError("The input format of {} is not valid.".format(config_input))
 
-    # Load the entry for the optimizations
+    # Load the dictionary entries for the optimizations, model structure and the overall config
     try:
         optimization_dict = config_dict["optimizations"]
+        model_structure_dict = config_dict["model_structure"]
+        _config_dict = config_dict["config"]
     except KeyError:
-        raise InvalidTrainingError("The loaded config does not have an entry for optimizations.")
+        raise InvalidTrainingError("The loaded config does not have an entry for either the optimizations, model structure or the config.")
 
-    # Check if the values for the optimizations are valid
-    if not all(isinstance(v, bool) for v in optimization_dict.values()):
-        raise InvalidTrainingError("The values {} cannot be used to initialize an Optimization object".format(optimization_dict.values()))
-
-    # Create an Optimizations object with the valid values and their keys. The keys have not been checked, they could
-    # be false, too few or too many
+    # Create the Optimizations, ModelStructure and Config objects from the respective dict. If the keys in these
+    # dicts are valid no exception is raised
     try:
         optimizations = Optimizations(**optimization_dict)
+        model_structure = ModelStructure(**model_structure_dict)
+        config = Config(**_config_dict)
     except TypeError:
         raise InvalidTrainingError("Cannot initialize the Optimizations object from {}".format(optimization_dict))
 
-    # Load the entry for the model structure
+    # Now check the values for the created objects
     try:
-        model_structure_dict = config_dict["model_structure"]
-    except KeyError:
-        raise InvalidTrainingError("The loaded config does not have an entry for the model structure")
+        validate_config_objects(optimizations, model_structure, config)
+    except InvalidTrainingError:
+        raise
 
-    # Create the ModelStructure object first to be able to easier check the values afterwards
-    try:
-        model_structure = ModelStructure(**model_structure_dict)
-    except TypeError:
-        raise InvalidTrainingError("Cannot initialize the ModelStructure object from {}".format(model_structure_dict))
+def validate_config_objects(optimizations, model_structure, config):
+    if not isinstance(optimizations, Optimizations) or not isinstance(model_structure, ModelStructure) or not isinstance(config, Config):
+        raise InvalidTrainingError("One of the given arguments has a false type.")
+
+    # Check if the values for the optimizations are valid
+    if not all(isinstance(v, bool) for v in optimizations):
+        raise InvalidTrainingError("The values from {} cannot be used to initialize an Optimization object".format(optimizations))
 
     # Validate values for the ModelStructure object
     try:
@@ -112,18 +113,6 @@ def validate_config(config_input):
         raise InvalidTrainingError("The model structure is missing the stepsize for the gradient optimizer.")
     except TypeError or AssertionError:
         raise InvalidTrainingError("One or more of the given values for the model structure is not valid.")
-
-    # Load the entry for the config
-    try:
-        _config_dict = config_dict["config"]
-    except KeyError:
-        raise InvalidTrainingError("The loaded config does not have an entry for the configuration.")
-
-    # Again, create the Config object first before validating values
-    try:
-        config = Config(**_config_dict)
-    except TypeError:
-        raise InvalidTrainingError("Cannot initialize the Config object from {}".format(_config_dict))
 
     # Validate values for the config
     try:
@@ -150,11 +139,8 @@ def validate_config(config_input):
 
         if optimizations.gradient_optimizer:
             assert config.l2coeff > 0
-
     except TypeError or AssertionError:
         raise InvalidTrainingError("One or more of the given values for the config is not valid.")
-
-    return optimizations, config, model_structure
 
 def index_training_folder(training_folder):
     '''
