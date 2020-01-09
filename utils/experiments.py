@@ -1,4 +1,56 @@
-class TrainingRun():
+from es_errors import InvalidTrainingError
+from es_utils import validate_config, validate_log, validate_evaluation
+
+
+class TrainingRun:
+    def __init__(self,
+                 config_file,
+                 log_file,
+                 evaluation_file,
+                 video_files,
+                 model_files,
+                 ob_normalization_files,
+                 optimizer_files):
+        try:
+            self.optimizations, self.model_structure, self.config = validate_config(config_file)
+        except InvalidTrainingError:
+            raise
+
+        self.log = validate_log(log_file)
+        self.evaluation = validate_evaluation(evaluation_file)
+
+        if not isinstance(video_files, list):
+            self.video_files = []
+        else:
+            self.video_files = video_files
+
+        if not isinstance(model_files, list):
+            self.model_files = []
+        else:
+            self.model_files = model_files
+
+        if not isinstance(ob_normalization_files, list):
+            self.ob_normalization_files = None
+        else:
+            self.ob_normalization_files = ob_normalization_files
+
+        if not isinstance(optimizer_files, list):
+            self.optimizer_files = []
+        else:
+            self.optimizer_files = optimizer_files
+
+    # def get_training_state(self):
+    #
+    #     current_model_file, current_optimizer_file, current_ob_normalization_file = None, None, None
+    #
+    #     if self.model_files is not None:
+    #         current_model_file = self.model_files[-1]
+    #
+    #     if self.current
+    #
+    #     return self.optimizations, self.model_structure, self.config
+    #     pass
+
     def __init__(self, save_directory, log, config, model_file_paths, evaluation=None, video_file=None):
         self.save_directory = save_directory
         self.log = log
