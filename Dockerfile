@@ -27,11 +27,14 @@ RUN conda clean --yes --all -f && \
 # Roboschool is deprecated after version 1.0.48
 # Install TensorFlow and NumPy with pip to prevent using the MKL version which in this implementation is slower
 RUN pip install --quiet \
-    tensorflow==1.14.0 \
-    numpy==1.16.4 \
-    gym \
+    numpy==1.17.2 \
+    tensorflow==2.0.0 \
+    keras==2.3.1 \
+    gym[atari] \
     roboschool==1.0.48 \
-    pybullet
+    pybullet \
+    opencv-python \
+    neat-python
 
 # $NB_USER == jovyan and his group is users, docker does not support dynamic substitution in chown
 # ADD --chown=jovyan:users . work/evolution-strategies/
@@ -40,4 +43,5 @@ WORKDIR work/evolution-strategies/
 
 # Run jupyter lab with a fake display to allow rendering in roboschool as suggested here:
 # https://github.com/openai/gym#rendering-on-a-server
+# NotebookApp.password='sha1:9eeee5ad359d:b3a4cf67b0e0cbdf8ad4a63d8c2df3702bc26b33'"]
 CMD ["xvfb-run", "-s", "-screen 0 1400x900x24", "start.sh", "jupyter", "lab", "--NotebookApp.password='sha1:9eeee5ad359d:b3a4cf67b0e0cbdf8ad4a63d8c2df3702bc26b33'"]
