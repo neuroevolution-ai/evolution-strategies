@@ -9,7 +9,7 @@ from es_errors import InvalidTrainingError
 from experiments import TrainingRun
 
 
-def validate_config(config_input):
+def validate_config_file(config_file):
     """
     Creates an Optimizations, ModelStructure and Config object from config_input and validates their attributes.
 
@@ -17,21 +17,21 @@ def validate_config(config_input):
     entries it reads from the input. Afterwards the values get validated. If everything is valid the objects get
     returned, otherwise an InvalidTrainingError is raised.
 
-    :param config_input: Configuration input of type os.DirEntry or dict
+    :param config_file: Configuration input of type os.DirEntry or dict
     :raises InvalidTrainingError: Will be raised when no valid objects can be created
     :return: A Valid Optimizations, ModelStructure and Config object, in this order
     """
     # Only os.DirEntry and dict are supported as input files. Could be easily extended if needed
-    if isinstance(config_input, os.DirEntry):
-        with open(config_input.path, encoding='utf-8') as f:
+    if isinstance(config_file, os.DirEntry):
+        with open(config_file.path, encoding='utf-8') as f:
             try:
                 config_dict = json.load(f)
             except json.JSONDecodeError:
-                raise InvalidTrainingError("The config file {} cannot be parsed.".format(config_input.path))
-    elif isinstance(config_input, dict):
-        config_dict = config_input
+                raise InvalidTrainingError("The config file {} cannot be parsed.".format(config_file.path))
+    elif isinstance(config_file, dict):
+        config_dict = config_file
     else:
-        raise InvalidTrainingError("The input format of {} is not valid.".format(config_input))
+        raise InvalidTrainingError("The input format of {} is not valid.".format(config_file))
 
     # Load the dictionary entries for the optimizations, model structure and the overall config
     try:
@@ -248,3 +248,15 @@ def index_training_folder(training_folder):
         raise
     else:
         return training_run
+
+
+def index_experiments(experiments_folder):
+
+    """
+    TODO
+    1. Check if folder
+    2. List all subfolders
+    3. index TrainingRun objects for each subfolder
+    4. Create experiments from the subfolders and return them
+    """
+    pass

@@ -1,7 +1,7 @@
 import os
 
 from es_errors import InvalidTrainingError
-from es_utils import validate_config, validate_log, validate_evaluation
+from es_utils import validate_config_file, validate_log, validate_evaluation
 
 
 class TrainingRun:
@@ -14,7 +14,7 @@ class TrainingRun:
                  ob_normalization_files=None,
                  optimizer_files=None):
         try:
-            self.optimizations, self.model_structure, self.config = validate_config(config_file)
+            self.optimizations, self.model_structure, self.config = validate_config_file(config_file)
         except InvalidTrainingError:
             raise
 
@@ -42,7 +42,7 @@ class TrainingRun:
         2. wenn env_seed angegeben nur einmal durchlaufen, da immer das gleiche ergebnis kommt
         3. wenn env_seed none -> num_evaluations nehmen. assertion > 0
         5. num_workers assert > 0
-        6. env_seed assert integer
+        6. env_seed assert integer oder None
         4. checken ob model files da sind
         Dann evaluation durchführen.
         Auf num_workers verteilen
@@ -363,7 +363,59 @@ class TrainingRun:
         return [rewards.sum(), length]
 
 
-class Experiment():
+class Experiment:
+    # TODO docstring
+
+    def __init__(self, optimizations, model_structure, config, training_runs):
+        # TODO docstring
+        # Experiment object should only be created through index_experiments() method from es_util. There the objects
+        # get validated
+        self.optimizations = optimizations
+        self.model_structure = model_structure
+        self.config = config
+        self.training_runs = training_runs
+
+    def evaluate(
+            self,
+            env_seed=None, num_evaluations=5, num_workers=os.cpu_count(), force=False, save=True):
+
+        """
+        TODO
+        1. Evaluiere jedes TrainingRun mit den Parametern
+        2. Auf assertions / fehler achten eingehen
+        """
+        pass
+
+    def visualize(self, env_seed=None, generation=-1, force=False):
+
+        """
+        TODO
+        1. Jedes Training run visualize mit den Parametern aufrufen
+        2. Auf assertions / fehler achten
+        """
+        pass
+
+    def delete_files(self, interval=1, model_files=False, ob_normalization_files=False, optimizer_files=False):
+
+        """
+        TODO
+        1. Auf jedem TrainingRun delete_files mit den Parametern aufrufen
+        2. Auf fehler /Assertions achten
+        """
+        pass
+
+    def plot_experiment(self, x_value, y_value, y_std=None, x_label=None, y_label=None):
+
+        """
+        TODO
+        1. x_value, y_value, ggf. y_std überprüfen
+        2. ggf x_label, y_label String überprüfen
+        3. Dann Daten von allen TrainingRuns holen -> Mittelwert bilden und darstellen
+        4. Für y_std Standardabweichung bilden und dann die Daten darstellen
+        """
+        pass
+
+
     def __init__(self, config, training_runs):
         self.config = config
         self.training_runs = training_runs
