@@ -29,6 +29,10 @@ RUN pip install --quiet \
     roboschool==1.0.48 \
     pybullet
 
+# TODO remove this if no widgets are used or Jupyter notebook is sed
+RUN conda install --yes -c conda-forge nodejs
+RUN jupyter labextension install @jupyter-widgets/jupyterlab-manager
+
 WORKDIR work/evolution-strategies/
 
 ADD hashed_password.txt .
