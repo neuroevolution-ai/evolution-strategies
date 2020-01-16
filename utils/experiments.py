@@ -1,3 +1,5 @@
+import os
+
 from es_errors import InvalidTrainingError
 from es_utils import validate_config, validate_log, validate_evaluation
 
@@ -5,39 +7,184 @@ from es_utils import validate_config, validate_log, validate_evaluation
 class TrainingRun:
     def __init__(self,
                  config_file,
-                 log_file,
-                 evaluation_file,
-                 video_files,
-                 model_files,
-                 ob_normalization_files,
-                 optimizer_files):
+                 log_file=None,
+                 evaluation_file=None,
+                 video_files=None,
+                 model_files=None,
+                 ob_normalization_files=None,
+                 optimizer_files=None):
         try:
             self.optimizations, self.model_structure, self.config = validate_config(config_file)
         except InvalidTrainingError:
             raise
 
+        # Could return None objects
         self.log = validate_log(log_file)
         self.evaluation = validate_evaluation(evaluation_file)
 
-        if not isinstance(video_files, list):
-            self.video_files = []
-        else:
-            self.video_files = video_files
+        # TODO save files as dict with generation as key and file path as value
+        # Could be None
+        self.optimizer_files = list(optimizer_files) if optimizer_files else []
+        self.ob_normalization_files = list(ob_normalization_files) if ob_normalization_files else []
+        self.model_files = list(model_files) if model_files else []
+        self.video_files = list(video_files) if video_files else []
 
-        if not isinstance(model_files, list):
-            self.model_files = []
-        else:
-            self.model_files = model_files
+        self.optimizer_files.sort()
+        self.ob_normalization_files.sort()
+        self.model_files.sort()
+        self.video_files.sort()
 
-        if not isinstance(ob_normalization_files, list):
-            self.ob_normalization_files = None
-        else:
-            self.ob_normalization_files = ob_normalization_files
+    def evaluate(self, env_seed=None, num_evaluations=5, num_workers=os.cpu_count(), force=False, save=True):
 
-        if not isinstance(optimizer_files, list):
-            self.optimizer_files = []
-        else:
-            self.optimizer_files = optimizer_files
+        """
+        TODO
+        1. force False -> gucken ob schon erstellt. wenn nicht dann weiter anonsten return
+        2. wenn env_seed angegeben nur einmal durchlaufen, da immer das gleiche ergebnis kommt
+        3. wenn env_seed none -> num_evaluations nehmen. assertion > 0
+        5. num_workers assert > 0
+        6. env_seed assert integer
+        4. checken ob model files da sind
+        Dann evaluation durchführen.
+        Auf num_workers verteilen
+        Je Generation eine Zeile mit den enstprechenden Werten
+        
+        Wenn save=True als csv evaluation.csv abspeichern
+        """
+
+        if not force:
+            if self.evaluation:
+                # TODO print already evaluated. Maybe in experiment?
+                return
+
+        if not self.model_files:
+            # TODO print no model files. should be handled in experiment?
+            return
+
+        # head_row = ['Generation', 'Eval_per_Gen', 'Eval_Rew_Mean', 'Eval_Rew_Std', 'Eval_Len_Mean']
+        #
+        # for i in range(eval_count):
+        #     head_row.append('Rew_' + str(i))
+        #     head_row.append('Len_' + str(i))
+        #
+        # data = []
+        #
+        # results_list = []
+        # pool = Pool(os.cpu_count())
+        #
+        # for model_file_path in self.model_file_paths[::skip]:
+        #     results = []
+        #     gen = self.parse_generation_number(model_file_path)
+        #
+        #     for _ in range(eval_count):
+        #         results.append(pool.apply_async(func=self.run_model, args=(model_file_path,)))
+        #     results_list.append((results, gen))
+        #
+        # for (results, gen) in results_list:
+        #     for i in range(len(results)):
+        #         results[i] = results[i].get()
+        #         if results[i] == [None, None]:
+        #             print("The provided model file produces non finite numbers. Stopping.")
+        #             return
+        #
+        #     rewards = np.array(results)[:, 0]
+        #     lengths = np.array(results)[:, 1]
+        #
+        #     row = [gen,
+        #            eval_count,
+        #            np.mean(rewards),
+        #            np.std(rewards),
+        #            np.mean(lengths)]
+        #
+        #     assert len(rewards) == len(lengths)
+        #     for i in range(len(rewards)):
+        #         row.append(rewards[i])
+        #         row.append(lengths[i])
+        #
+        #     data.append(row)
+        #
+        # pool.close()
+        # pool.join()
+        #
+        # self.evaluation = pd.DataFrame(data, columns=head_row)
+        # if save:
+        #     self.save_evaluation()
+        # # Only copy the mean values in the merged data
+        # self.data = self.merge_log_eval()
+        #
+        # if delete_models:
+        #     self.delete_model_files
+        #
+        # return self.data
+
+        pass
+
+    def visualize(self, env_seed=None, generation=-1, force=False):
+
+        """
+        TODO
+        1. assert env_seed integer; assert generation integer, -1 oder >= 0;
+        2. Wenn nicht force nur weitermachen wenn visualisierung noch nicht existiert
+        3. Für angegebene Generation visualisierung durchführen, ggf. seed setzen
+        4. video Objekt erstellen, filepath setzen und returnen
+        """
+        pass
+
+    def plot_training_run(self, x_value, y_value, y_std=None, x_label=None, y_label=None):
+
+        """
+        TODO
+        1. x_value, y_value, ggf y_std checken ob diese Spaltennamen exisitieren
+        2. assert x_label, y_label string oder None
+        3. Values plotten mit matplotlib
+        Auf eventuelle Fehler achten:
+        - Datenspalten leer
+        - Evaluation möglicherweise nicht existent falls daraus geplottet werden soll
+        """
+        pass
+
+    def delete_files(self, interval=1, model_files=False, ob_normalization_files=False, optimizer_files=False):
+
+        """
+        TODO
+        1. assert interval > 0
+        2. Checken welche files gelöscht werden sollen, dann im interval die Dateien löschen
+        Achtung:
+        - möglicherweise leere dicts bei den files
+        - interval könnte irgendwie überlaufen oder zu klein sein
+        """
+        pass
+
+    def get_training_state(self, generation=-1):
+
+        """
+        TODO
+        1. assert generation >= 0 oder -1
+        2. Entsprechende files returnen. Wenn es model file nicht gibt -> error. Wenn es ob_norm oder optimizer nicht gibt,
+        jeweils None returnen muss enstprechend beim Aufrufer gehandled werden
+        """
+        pass
+
+
+        #
+        # if not isinstance(video_files, list):
+        #     self.video_files = []
+        # else:
+        #     self.video_files = video_files
+        #
+        # if not isinstance(model_files, list):
+        #     self.model_files = []
+        # else:
+        #     self.model_files = model_files
+        #
+        # if not isinstance(ob_normalization_files, list):
+        #     self.ob_normalization_files = []
+        # else:
+        #     self.ob_normalization_files = ob_normalization_files
+        #
+        # if not isinstance(optimizer_files, list):
+        #     self.optimizer_files = []
+        # else:
+        #     self.optimizer_files = optimizer_files
 
     # def get_training_state(self):
     #
