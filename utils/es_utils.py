@@ -263,8 +263,7 @@ def index_experiments(experiments_folder):
 
 
 def act(ob, model, random_stream=None, ac_noise_std=0):
-    """
-    act() takes an observation and a model with which an action shall be calculated.
+    """Takes an observation and a model with which an action shall be calculated.
 
     This means the action is a prediction of the model based on the observation. In addition if one provides a random
     stream and action noise, a random factor is added to the output prediction which can help generalisation but is
@@ -272,8 +271,9 @@ def act(ob, model, random_stream=None, ac_noise_std=0):
 
     :param ob: The observation from which the action shall be predicted
     :param model: The model which is used to predict the output
-    :param random_stream: If action noise shall be used this random stream provides the random number for it
-    :param ac_noise_std: Will be multiplied with the random number to generate noise
+    :param random_stream: If action noise shall be used this random stream provides the random number for it, defaults
+        to None
+    :param ac_noise_std: Will be multiplied with the random number to generate noise, defaults to 0
     :return: The predicted action based on the observation and the model
     """
     # Calculate prediction and measure the time, on batch prediction usually faster in es context
@@ -287,13 +287,28 @@ def act(ob, model, random_stream=None, ac_noise_std=0):
     return action, time_predict_e
 
 
-def rollout(env, model, render=False, timestep_limit=None, save_obs=False, random_stream=None):
-    """
-    TODO add to docstring
-    If random_stream is provided, the rollout will take noisy actions with noise drawn from that stream.
-    Otherwise, no action noise will be added.
-    """
+def rollout(env, model, render=False, timestep_limit=None, save_obs=False, random_stream=None, ac_noise_std=0):
+    """Steps an episode in an environment with the policy provided through the model parameter.
 
+    One call to the rollout function will run through an episode in the provided environment. Based on the model
+    observations from the environment will be used to calculate actions, i.e. a step in the environment in one
+    timestep. If render is True the environment will be rendered. If timestep_limit is provided the epsiode will only
+    last this number of timesteps long or shorter. If save_obs is True all observations from the environment will be
+    saved and returned. If random_stream is not None and ac_noise_std is higher than 0, noise will be added to the
+    prediction of the model which is known as action noise.
+
+    :param env: The environment in which the episode will be done
+    :param model: A model which will be used to predict actions. Input and output dimensions must match the environment
+    :param render: True if the environment shall be rendered, False if not, defaults to False
+    :param timestep_limit: If provided the episode will run this long or shorter, defaults to None
+    :param save_obs: If True, the observations get saved, defaults to False
+    :param random_stream: If provided and ac_noise_std is larger than 0 action noise is added to the prediction,
+        defaults to None
+    :param ac_noise_std: If larger than 0 and random_stream is provided, adds action noise to the prediction, defaults
+        to 0
+    :return: Returns the summed reward, timesteps of the episode and the prediction time measurements. If save_obs
+        is True, the observations are returned as well
+    """
     env_timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
     timestep_limit = env_timestep_limit if timestep_limit is None else min(timestep_limit, env_timestep_limit)
     rews = []
@@ -301,9 +316,12 @@ def rollout(env, model, render=False, timestep_limit=None, save_obs=False, rando
     t = 0
     if save_obs:
         obs = []
+    if render:
+        # For PyBullet environments render() must be called before reset() otherwise rendering does not work
+        env.render()
     ob = env.reset()
     for _ in range(timestep_limit):
-        ac, time_predict = act(ob[None], model, random_stream=random_stream)
+        ac, time_predict = act(ob[None], model, random_stream=random_stream, ac_noise_std=ac_noise_std)
         ac = ac[0]
         times_predict.append(time_predict)
         if save_obs:
@@ -321,5 +339,5 @@ def rollout(env, model, render=False, timestep_limit=None, save_obs=False, rando
             break
     rews = np.array(rews, dtype=np.float32)
     if save_obs:
-        return rews, t, np.array(obs), times_predict
+        return rews, t, times_predict, np.array(obs)
     return rews, t, times_predict
