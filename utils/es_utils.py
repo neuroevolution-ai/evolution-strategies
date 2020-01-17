@@ -1,7 +1,9 @@
 import json
 import gym
+import numpy as np
 import os
 import pandas as pd
+import time
 
 from config_objects import Optimizations, ModelStructure, Config
 from config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders
@@ -71,7 +73,6 @@ def validate_config_objects(optimizations, model_structure, config):
     :param config: An object of type Config for which the values shall be validated
     :raises InvalidTrainingError: When there is at least one invalid value
     """
-
     if not isinstance(optimizations, Optimizations) or not isinstance(model_structure, ModelStructure) or not isinstance(config, Config):
         raise InvalidTrainingError("One of the given arguments has a false type.")
 
@@ -210,7 +211,6 @@ def index_training_folder(training_folder):
     :return: A TrainingRun object with the attributes set to valid objects found in the training_folder
     :raises InvalidTrainingError: Will be raised if the config files is not found or invalid
     """
-
     if not os.path.isdir(training_folder):
         raise InvalidTrainingError("Cannot load training, {} is not a directory.".format(training_folder))
 
@@ -260,3 +260,66 @@ def index_experiments(experiments_folder):
     4. Create experiments from the subfolders and return them
     """
     pass
+
+
+def act(ob, model, random_stream=None, ac_noise_std=0):
+    """
+    act() takes an observation and a model with which an action shall be calculated.
+
+    This means the action is a prediction of the model based on the observation. In addition if one provides a random
+    stream and action noise, a random factor is added to the output prediction which can help generalisation but is
+    in theory more difficult to learn.
+
+    :param ob: The observation from which the action shall be predicted
+    :param model: The model which is used to predict the output
+    :param random_stream: If action noise shall be used this random stream provides the random number for it
+    :param ac_noise_std: Will be multiplied with the random number to generate noise
+    :return: The predicted action based on the observation and the model
+    """
+    # Calculate prediction and measure the time, on batch prediction usually faster in es context
+    time_predict_s = time.time()
+    action = model.predict_on_batch(ob)
+    time_predict_e = time.time() - time_predict_s
+
+    if random_stream is not None and ac_noise_std != 0:
+        # Action noise can make the learned model more robust but is generally more difficult
+        action += random_stream.randn(*action.shape) * ac_noise_std
+    return action, time_predict_e
+
+
+def rollout(env, model, render=False, timestep_limit=None, save_obs=False, random_stream=None):
+    """
+    TODO add to docstring
+    If random_stream is provided, the rollout will take noisy actions with noise drawn from that stream.
+    Otherwise, no action noise will be added.
+    """
+
+    env_timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = env_timestep_limit if timestep_limit is None else min(timestep_limit, env_timestep_limit)
+    rews = []
+    times_predict = []
+    t = 0
+    if save_obs:
+        obs = []
+    ob = env.reset()
+    for _ in range(timestep_limit):
+        ac, time_predict = act(ob[None], model, random_stream=random_stream)
+        ac = ac[0]
+        times_predict.append(time_predict)
+        if save_obs:
+            obs.append(ob)
+        try:
+            ob, rew, done, _ = env.step(ac)
+        except AssertionError:
+            # Is thrown when for example ac is a list which has at least one entry with NaN
+            raise
+        rews.append(rew)
+        t += 1
+        if render:
+            env.render()
+        if done:
+            break
+    rews = np.array(rews, dtype=np.float32)
+    if save_obs:
+        return rews, t, np.array(obs), times_predict
+    return rews, t, times_predict
