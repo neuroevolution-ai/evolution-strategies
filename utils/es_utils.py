@@ -321,13 +321,15 @@ def rollout(env, model, render=False, timestep_limit=None, save_obs=False, rando
         env.render()
     ob = env.reset()
     for _ in range(timestep_limit):
+        # The model wants an input in shape (X, ob_shape). With ob[None] this will be (1, ob_shape)
         ac, time_predict = act(ob[None], model, random_stream=random_stream, ac_noise_std=ac_noise_std)
-        ac = ac[0]
         times_predict.append(time_predict)
         if save_obs:
             obs.append(ob)
         try:
-            ob, rew, done, _ = env.step(ac)
+            # Similar to the shape of the observation we get (1, ac_shape) as output of the model but the environment
+            # wants (ac_shape) as input. Therefore we use ac[0].
+            ob, rew, done, _ = env.step(ac[0])
         except AssertionError:
             # Is thrown when for example ac is a list which has at least one entry with NaN
             raise
