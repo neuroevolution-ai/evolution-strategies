@@ -8,7 +8,7 @@ import time
 from config_objects import Optimizations, ModelStructure, Config
 from config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders
 from es_errors import InvalidTrainingError
-from experiments import TrainingRun
+from experiments import TrainingRun, Experiment
 
 
 def validate_config_file(config_file):
@@ -257,9 +257,30 @@ def index_experiments(experiments_folder):
     1. Check if folder
     2. List all subfolders
     3. index TrainingRun objects for each subfolder
-    4. Create experiments from the subfolders and return them
+    4. Compare TrainingRun configurations and create Experiments for same configs
     """
-    pass
+
+    if os.isdir(experiments_folder):
+        # This will get the first entry in walk and ouput the directories which are stored in the second entry of the
+        # tuple
+        sub_directories = next(os.walk(experiments_folder))[1]
+        training_runs = []
+
+        for sub_dir in sub_directories:
+            try:
+                training_run = index_training_folder(os.path.join(experiments_folder, sub_dir))
+            except InvalidTrainingError:
+                continue
+            else:
+                training_runs.append(training_run)
+                # TODO check here if config of this training_run already occured, if yes add to list else create new list
+
+        # TODO create experiments of previously created lists and return a list of these experiments
+        # TODO check empty lists before returning
+    else:
+        # TODO remove else when else in if clause is set
+        return []
+
 
 
 def act(ob, model, random_stream=None, ac_noise_std=0):
@@ -287,7 +308,9 @@ def act(ob, model, random_stream=None, ac_noise_std=0):
     return action, time_predict_e
 
 
-def rollout(env, model, render=False, timestep_limit=None, save_obs=False, random_stream=None, ac_noise_std=0):
+def rollout(
+        env, model,
+        env_seed=None, render=False, timestep_limit=None, save_obs=False, random_stream=None, ac_noise_std=0):
     """Steps an episode in an environment with the policy provided through the model parameter.
 
     One call to the rollout function will run through an episode in the provided environment. Based on the model
@@ -299,6 +322,7 @@ def rollout(env, model, render=False, timestep_limit=None, save_obs=False, rando
 
     :param env: The environment in which the episode will be done
     :param model: A model which will be used to predict actions. Input and output dimensions must match the environment
+    :param env_seed: Sets the seed for the environment, defaults to None
     :param render: True if the environment shall be rendered, False if not, defaults to False
     :param timestep_limit: If provided the episode will run this long or shorter, defaults to None
     :param save_obs: If True, the observations get saved, defaults to False
@@ -314,11 +338,19 @@ def rollout(env, model, render=False, timestep_limit=None, save_obs=False, rando
     rews = []
     times_predict = []
     t = 0
+
+    if env_seed:
+        try:
+            env.seed(env_seed)
+        except gym.error.Error as e:
+            print(e)
+            print("Using random seed.")
     if save_obs:
         obs = []
     if render:
         # For PyBullet environments render() must be called before reset() otherwise rendering does not work
         env.render()
+
     ob = env.reset()
     for _ in range(timestep_limit):
         # The model wants an input in shape (X, ob_shape). With ob[None] this will be (1, ob_shape)
