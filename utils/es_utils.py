@@ -375,3 +375,8 @@ def rollout(
     if save_obs:
         return rews, t, times_predict, np.array(obs)
     return rews, t, times_predict
+
+
+def load_model(model_file_path):
+    # TODO paste this function from notebook
+    pass
