@@ -282,7 +282,6 @@ def index_experiments(experiments_folder):
         return []
 
 
-
 def act(ob, model, random_stream=None, ac_noise_std=0):
     """Takes an observation and a model with which an action shall be calculated.
 
@@ -378,5 +377,28 @@ def rollout(
 
 
 def load_model(model_file_path):
-    # TODO paste this function from notebook
-    pass
+    """Loads a tf.keras model from the given file path and returns it.
+
+    If an OSError is raised it will be printed and None is returned.
+    Note that this function imports tensorflow which can interfere with multiprocessing in combination with TensorFlow.
+
+    :param model_file_path: The file path to the model which shall be loaded.
+    :return: A model if the provided file is a valid model, None if not
+    """
+    # The imports need to be inside the function definition since TensorFlow sessions interfere with multiprocessing
+    # and the program does not work
+    import tensorflow as tf
+
+    from es_custom_layers import Normc_initializer, ObservationNormalizationLayer, DiscretizeActionsUniformLayer
+
+    custom_objects = {'Normc_initializer': Normc_initializer,
+                      'ObservationNormalizationLayer': ObservationNormalizationLayer,
+                      'DiscretizeActionsUniformLayer': DiscretizeActionsUniformLayer}
+
+    try:
+        model = tf.keras.models.load_model(model_file_path, custom_objects=custom_objects)
+    except OSError as e:
+        print(e)
+        return None
+    return model
+
