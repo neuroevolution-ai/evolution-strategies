@@ -251,35 +251,52 @@ def index_training_folder(training_folder):
 
 
 def index_experiments(experiments_folder):
+    """Creates a list of Experiment objects from multiple training runs located in sub directories of
+    experiments_folder.
 
+    For each valid sub directory in experiments_folder a TrainingRun object will be created. Then the configurations
+    of these runs are compared and if they match an Experiment object is created from them. A list of Experiments
+    gets then returned. If no experiments can be found an empty list is returned.
+
+    :param experiments_folder: A folder which contains sub directories with training runs.
+    :return: A list of Experiment objects if valid training runs are found, an empty list otherwise.
     """
-    TODO
-    1. Check if folder
-    2. List all subfolders
-    3. index TrainingRun objects for each subfolder
-    4. Compare TrainingRun configurations and create Experiments for same configs
-    """
+    experiments = []
 
     if os.isdir(experiments_folder):
         # This will get the first entry in walk and ouput the directories which are stored in the second entry of the
         # tuple
         sub_directories = next(os.walk(experiments_folder))[1]
-        training_runs = []
+        different_experiments = {}
 
+        # Only checks direct sub directories for simplicity
+        i = 0
         for sub_dir in sub_directories:
             try:
                 training_run = index_training_folder(os.path.join(experiments_folder, sub_dir))
             except InvalidTrainingError:
                 continue
             else:
-                training_runs.append(training_run)
-                # TODO check here if config of this training_run already occured, if yes add to list else create new list
 
-        # TODO create experiments of previously created lists and return a list of these experiments
-        # TODO check empty lists before returning
-    else:
-        # TODO remove else when else in if clause is set
-        return []
+                for key, value in different_experiments.items():
+                    current_item = value[-1]
+                    # Matching configuration objects mean the TrainingRun's are part of the same experiment
+                    if (training_run.optimizations == current_item.optimizations and
+                            training_run.model_structure == current_item.model_structure and
+                            training_run.config == current_item.config):
+                        different_experiments[key].append(training_run)
+                        break
+                else:
+                    # TrainingRun's with the current config not found, therefore create a new entry
+                    different_experiments[i] = [training_run]
+                    i += 1
+        for training_run_list in different_experiments.values():
+            sample_training_run = training_run_list[-1]
+            experiments.append(Experiment(
+                sample_training_run.optimizations, sample_training_run.model_structure, sample_training_run.config,
+                training_run_list))
+
+    return experiments
 
 
 def act(ob, model, random_stream=None, ac_noise_std=0):
