@@ -8,7 +8,7 @@ import time
 
 # Needed for registering the environments of these packages to the OpenAI Gym
 import pybullet_envs
-#import roboschool
+import roboschool
 
 from config_objects import Optimizations, ModelStructure, Config
 from config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders
@@ -210,6 +210,11 @@ def validate_evaluation(evaluation_input):
 
 
 def parse_generation_number(model_file_path):
+    """Parses the generation number from a given file path, for example from a model file.
+
+    :param model_file_path: A string containing a file path from where a generation number shall be extracted.
+    :return: The generation number as an integer
+    """
     # Get the series of numbers to the most right of the string, except for a 2 or 3 character long file ending
     # Example: "openaigym.video.1.111.video000013.mp4" would return a "13"
     match = re.match(r".*?([0-9]+)\.\w\w\w?$", model_file_path)
