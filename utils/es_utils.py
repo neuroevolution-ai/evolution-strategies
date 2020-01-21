@@ -3,7 +3,12 @@ import gym
 import numpy as np
 import os
 import pandas as pd
+import re
 import time
+
+# Needed for registering the environments of these packages to the OpenAI Gym
+import pybullet_envs
+#import roboschool
 
 from config_objects import Optimizations, ModelStructure, Config
 from config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders
@@ -78,7 +83,8 @@ def validate_config_objects(optimizations, model_structure, config):
 
     # Check if the values for the optimizations are valid
     if not all(isinstance(v, bool) for v in optimizations):
-        raise InvalidTrainingError("The values from {} cannot be used to initialize an Optimization object".format(optimizations))
+        raise InvalidTrainingError(
+            "The values from {} cannot be used to initialize an Optimization object".format(optimizations))
 
     # Validate values for the ModelStructure object
     try:
@@ -90,7 +96,9 @@ def validate_config_objects(optimizations, model_structure, config):
         if optimizations.gradient_optimizer:
             # Other values in the optimizer_args dict are not checked only the mandatory stepsize is there
             # Could potentially lead to false arguments. They are handled in the Optimizer class
-            assert model_structure.optimizer == ConfigValues.OPTIMIZER_ADAM or model_structure.optimizer == ConfigValues.OPTIMIZER_SGD
+            assert (
+                    model_structure.optimizer == ConfigValues.OPTIMIZER_ADAM.value or
+                    model_structure.optimizer == ConfigValues.OPTIMIZER_SGD.value)
             stepsize = model_structure.optimizer_args['stepsize']
             assert stepsize > 0
         if optimizations.discretize_actions:
@@ -116,9 +124,9 @@ def validate_config_objects(optimizations, model_structure, config):
         assert config.snapshot_freq >= 0
         assert config.eval_prob >= 0
 
-        assert (config.return_proc_mode == ConfigValues.RETURN_PROC_MODE_CR
-                or config.return_proc_mode == ConfigValues.RETURN_PROC_MODE_SIGN
-                or config.return_proc_mode == ConfigValues.RETURN_PROC_MODE_CR_SIGN)
+        assert (config.return_proc_mode == ConfigValues.RETURN_PROC_MODE_CR.value
+                or config.return_proc_mode == ConfigValues.RETURN_PROC_MODE_SIGN.value
+                or config.return_proc_mode == ConfigValues.RETURN_PROC_MODE_CR_SIGN.value)
 
         if optimizations.observation_normalization:
             assert config.calc_obstat_prob > 0
@@ -140,22 +148,24 @@ def validate_log(log_input):
     :return: A pandas DataFrame containing the loaded log if it is valid, None instead
     """
     log = None
-
-    try:
-        log = pd.read_csv(log_input)
-    except pd.errors.EmptyDataError:
-        print("The log file {} is empty. Continuing.".format(log_input))
-    except pd.errors.ParserError:
-        print("The log file {} cannot be parsed. Continuing.".format(log_input))
-    except FileNotFoundError:
-        print("The log file {} does not exist. Continuing.".format(log_input))
-    else:
-        # Compare with the column headers which are set for the whole program, in the right order
-        for a, b in zip(list(log), [e.value for e in LogColumnHeaders]):
-            if a != b:
-                log = None
-                print("The log file {} does not have valid column headers. Continuing.".format(log_input))
-                break
+    if log_input:
+        try:
+            log = pd.read_csv(log_input)
+        except pd.errors.EmptyDataError:
+            print("The log file {} is empty. Continuing.".format(log_input))
+        except pd.errors.ParserError:
+            print("The log file {} cannot be parsed. Continuing.".format(log_input))
+        except FileNotFoundError:
+            print("The log file {} does not exist. Continuing.".format(log_input))
+        except ValueError:
+            print("The log file {} has a false type. Continuing.".format(log_input))
+        else:
+            # Compare with the column headers which are set for the whole program, in the right order
+            for a, b in zip(list(log), [e.value for e in LogColumnHeaders]):
+                if a != b:
+                    log = None
+                    print("The log file {} does not have valid column headers. Continuing.".format(log_input))
+                    break
     return log
 
 
@@ -171,30 +181,42 @@ def validate_evaluation(evaluation_input):
     :return: If the validation is successful a pandas DataFrame, instead None
     """
     evaluation = None
+    if evaluation_input:
+        try:
+            evaluation = pd.read_csv(evaluation_input)
+        except pd.errors.EmptyDataError:
+            print("The evaluation file {} is empty. Continuing.".format(evaluation_input))
+        except pd.errors.ParserError:
+            print("The evaluation file {} cannot be parsed. Continuing.".format(evaluation_input))
+        except FileNotFoundError:
+            print("The evaluation file {} does not exist. Continuing.".format(evaluation_input))
+        except ValueError:
+            print("The evaluation file {} has a false type. Continuing.".format(evaluation_input))
+        else:
+            # Due to saving issues the Generation column got duplicated as the first column and is unnamed. Deleting it
+            # here to avoid issues when comparing. TODO remove this when older evaluations are no longer used
+            if "Unnamed: 0" in evaluation:
+                del evaluation["Unnamed: 0"]
 
-    try:
-        evaluation = pd.read_csv(evaluation_input)
-    except pd.errors.EmptyDataError:
-        print("The evaluation file {} is empty. Continuing.".format(evaluation_input))
-    except pd.errors.ParserError:
-        print("The evaluation file {} cannot be parsed. Continuing.".format(evaluation_input))
-    except FileNotFoundError:
-        print("The evaluation file {} does not exist. Continuing.".format(evaluation_input))
-    else:
-        # Due to saving issues the Generation column got duplicated as the first column and is unnamed. Deleting it
-        # here to avoid issues when comparing. TODO remove this when older evaluations are no longer used
-        if "Unnamed: 0" in evaluation:
-            del evaluation["Unnamed: 0"]
-
-        # Compare with the column headers which are set for the whole program, in the right order
-        # Take only the first 5 entries since after that individual reward and lengths are saved which are not validated
-        for a, b in zip(list(evaluation)[:5], [e.value for e in EvaluationColumnHeaders][:5]):
-            if a != b:
-                evaluation = None
-                print("The evaluation file {} does not have valid column headers. Continuing.".format(evaluation_input))
-                break
+            # Compare with the column headers which are set for the whole program, in the right order
+            # Take only the first 5 entries since after that individual reward and lengths are saved which are not validated
+            for a, b in zip(list(evaluation)[:5], [e.value for e in EvaluationColumnHeaders][:5]):
+                if a != b:
+                    evaluation = None
+                    print("The evaluation file {} does not have valid column headers. Continuing.".format(evaluation_input))
+                    break
 
     return evaluation
+
+
+def parse_generation_number(model_file_path):
+    # Get the series of numbers to the most right of the string, except for a 2 or 3 character long file ending
+    # Example: "openaigym.video.1.111.video000013.mp4" would return a "13"
+    match = re.match(r".*?([0-9]+)\.\w\w\w?$", model_file_path)
+    if match:
+        return int(match.group(1))
+
+    return None
 
 
 def index_training_folder(training_folder):
@@ -214,27 +236,39 @@ def index_training_folder(training_folder):
     if not os.path.isdir(training_folder):
         raise InvalidTrainingError("Cannot load training, {} is not a directory.".format(training_folder))
 
-    model_files = []
-    video_files = []
-    ob_normalization_files = []
-    optimizer_files = []
+    config_file = None
+    log_file = None
+    evaluation_file = None
+    model_files = {}
+    video_files = {}
+    ob_normalization_files = {}
+    optimizer_files = {}
 
     with os.scandir(training_folder) as it:
         for entry in it:
-            if entry.name.endswith(".h5") and entry.is_file():
-                model_files.append(entry.path)
-            elif entry.name.startswith("ob_normalization_") and entry.is_file():
-                ob_normalization_files.append(entry.path)
-            elif entry.name.startswith("optimizer_") and entry.is_file():
-                optimizer_files.append(entry.path)
-            elif entry.name.endswith(".mp4") and entry.is_file():
-                video_files.append(entry.path)
-            elif entry.name == "config.json" and entry.is_file():
-                config_file = entry
-            elif entry.name == "log.csv" and entry.is_file():
-                log_file = entry
-            elif entry.name == "evaluation.csv" and entry.is_file():
-                evaluation_file = entry
+            if entry.is_file():
+                is_model_file = entry.name.endswith(".h5")
+                is_ob_normalization_file = entry.name.startswith("ob_normalization_")
+                is_optimizer_file = entry.name.startswith("optimizer_")
+                is_video_file = entry.name.endswith(".mp4")
+
+                if is_model_file or is_ob_normalization_file or is_optimizer_file or is_video_file:
+                    generation = parse_generation_number(entry.path)
+                    if generation:
+                        if is_model_file:
+                            model_files[generation] = entry.path
+                        elif is_ob_normalization_file:
+                            ob_normalization_files[generation] = entry.path
+                        elif is_optimizer_file:
+                            optimizer_files[generation] = entry.path
+                        elif is_video_file:
+                            video_files[generation] = entry.path
+                elif entry.name == "config.json":
+                    config_file = entry
+                elif entry.name == "log.csv":
+                    log_file = entry
+                elif entry.name == "evaluation.csv":
+                    evaluation_file = entry
 
     try:
         training_run = TrainingRun(config_file,
