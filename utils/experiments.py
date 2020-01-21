@@ -23,15 +23,16 @@ class TrainingRun:
         self.evaluation = es_utils.validate_evaluation(evaluation_file)
 
         # Could be None, therefore initialize empty list if so
-        self.optimizer_files = dict(optimizer_files) if optimizer_files else {}
-        self.ob_normalization_files = dict(ob_normalization_files) if ob_normalization_files else {}
-        self.model_files = dict(model_files) if model_files else {}
-        self.video_files = dict(video_files) if video_files else {}
-
-        # self.optimizer_files.sort()
-        # self.ob_normalization_files.sort()
-        # self.model_files.sort()
-        # self.video_files.sort()
+        try:
+            self.optimizer_files = es_utils.sort_dict(dict(optimizer_files)) if optimizer_files else {}
+            self.ob_normalization_files = \
+                es_utils.sort_dict(dict(ob_normalization_files)) if ob_normalization_files else {}
+            self.model_files = es_utils.sort_dict(dict(model_files)) if model_files else {}
+            self.video_files = es_utils.sort_dict(dict(video_files)) if video_files else {}
+        except ValueError or AttributeError:
+            # The sorting method will throw one of these errors if the input or the keys are invalid
+            raise InvalidTrainingError(
+                "Saving the file dictionaries raised an issue, possibly when sorting it by the keys. Aborting.")
 
     def evaluate(self, env_seed=None, num_evaluations=5, num_workers=os.cpu_count(), force=False, save=True):
 

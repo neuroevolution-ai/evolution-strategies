@@ -46,7 +46,8 @@ def validate_config_file(config_file):
         model_structure_dict = config_dict["model_structure"]
         _config_dict = config_dict["config"]
     except KeyError:
-        raise InvalidTrainingError("The loaded config does not have an entry for either the optimizations, model structure or the config.")
+        raise InvalidTrainingError(
+            "The loaded config does not have an entry for either the optimizations, model structure or the config.")
 
     # Create the Optimizations, ModelStructure and Config objects from the respective dict. If the keys in these
     # dicts are valid no exception is raised
@@ -222,6 +223,22 @@ def parse_generation_number(model_file_path):
         return int(match.group(1))
 
     return None
+
+
+def sort_dict(dictionary):
+    """Sorts a dictionary with only Integer keys ascending by these keys.
+
+    If the dictionary is not valid, i.e. does not exclusively contain Integer keys, an Error is raised.
+
+    :param dictionary: The to be sorted dictionary
+    :return: The sorted dictionary, ascending by Integer keys.
+    """
+    try:
+        sorted_dict = sorted(dictionary.items(), key=lambda x: int(x[0]))
+    except ValueError or AttributeError:
+        raise
+    else:
+        return sorted_dict
 
 
 def index_training_folder(training_folder):
