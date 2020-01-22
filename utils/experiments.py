@@ -346,22 +346,7 @@ class TrainingRun:
     #
     #     return self.video_file
     #
-    # def run_model(self, model_file_path, record=False):
-    #     env = gym.make(self.config['config']['env_id'])
-    #     env.reset()
-    #
-    #     if record:
-    #         env = wrappers.Monitor(env, self.save_directory, force=True)
-    #
-    #     model = load_model(model_file_path)
-    #
-    #     try:
-    #         rewards, length = rollout_evaluation(env, model)
-    #     except AssertionError:
-    #         # Is thrown when for example ac is a list which has at least one entry with NaN
-    #         return [None, None]
-    #
-    #     return [rewards.sum(), length]
+
 
 
 class Experiment:

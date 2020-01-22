@@ -1,5 +1,6 @@
 import json
 import gym
+from gym import wrappers
 import numpy as np
 import os
 import pandas as pd
@@ -8,7 +9,7 @@ import time
 
 # Needed for registering the environments of these packages to the OpenAI Gym
 import pybullet_envs
-import roboschool
+#import roboschool TODO import again when finished debugging
 
 from config_objects import Optimizations, ModelStructure, Config
 from config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders
@@ -424,9 +425,11 @@ def rollout(
         env.render()
 
     ob = env.reset()
+    acs = [] # TODO remove
     for _ in range(timestep_limit):
         # The model wants an input in shape (X, ob_shape). With ob[None] this will be (1, ob_shape)
         ac, time_predict = act(ob[None], model, random_stream=random_stream, ac_noise_std=ac_noise_std)
+        acs.append(ac[0]) # TODO remove
         times_predict.append(time_predict)
         if save_obs:
             obs.append(ob)
@@ -445,8 +448,8 @@ def rollout(
             break
     rews = np.array(rews, dtype=np.float32)
     if save_obs:
-        return rews, t, times_predict, np.array(obs)
-    return rews, t, times_predict
+        return np.array(rews), t, times_predict, np.array(obs), np.array(acs) # TODO remove
+    return rews, t, times_predict, acs # TODO remove
 
 
 def load_model(model_file_path):
@@ -464,9 +467,9 @@ def load_model(model_file_path):
 
     from es_custom_layers import Normc_initializer, ObservationNormalizationLayer, DiscretizeActionsUniformLayer
 
-    custom_objects = {'Normc_initializer': Normc_initializer,
-                      'ObservationNormalizationLayer': ObservationNormalizationLayer,
-                      'DiscretizeActionsUniformLayer': DiscretizeActionsUniformLayer}
+    custom_objects = {"Normc_initializer": Normc_initializer,
+                      "ObservationNormalizationLayer": ObservationNormalizationLayer,
+                      "DiscretizeActionsUniformLayer": DiscretizeActionsUniformLayer}
 
     try:
         model = tf.keras.models.load_model(model_file_path, custom_objects=custom_objects)
@@ -475,3 +478,19 @@ def load_model(model_file_path):
         return None
     return model
 
+
+def load_and_rollout(env_id, model_file_path, env_seed=None, record=False):
+    env = gym.make(env_id)
+
+    if record:
+        env = wrappers.Monitor(env, os.path.dirname(model_file_path), force=True)
+
+    model = load_model(model_file_path)
+
+    try:
+        rewards, length, _, obs, acs = rollout(env, model, env_seed=env_seed, save_obs=True) # TODO remove acs
+    except AssertionError:
+        # Is thrown when for example ac is a list which has at least one entry with NaN
+        return [None, None]
+
+    return [rewards.sum(), length], obs, acs, rewards # TODO remove acs and rewards
