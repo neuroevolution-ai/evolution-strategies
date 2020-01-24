@@ -39,5 +39,4 @@ class EvaluationColumnHeaders(Enum):
     EVAL_REW_MEAN = "Eval_Rew_Mean"
     EVAL_REW_STD = "Eval_Rew_Std"
     EVAL_LEN_MEAN = "Eval_Len_Mean"
-    REW_PREFIX = "Rew_"
-    LEN_PREFIX = "Len_"
+    # Rew_ and Len_ will be appended in every evaluation, depending on the number of evaluations

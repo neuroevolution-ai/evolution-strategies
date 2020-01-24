@@ -182,6 +182,7 @@ def validate_evaluation(evaluation_input):
     :param evaluation_input: The file containing an evaluation which shall be validated
     :return: If the validation is successful a pandas DataFrame, instead None
     """
+    # TODO support pd Dataframe as input
     evaluation = None
     if evaluation_input:
         try:

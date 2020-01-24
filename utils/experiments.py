@@ -1,8 +1,11 @@
+import multiprocessing as mp
+import numpy as np
 import os
+import pandas as pd
 
 from es_errors import InvalidTrainingError
 import es_utils
-
+import config_values
 
 class TrainingRun:
     def __init__(self,
@@ -60,64 +63,76 @@ class TrainingRun:
             # TODO print no model files. should be handled in experiment?
             return
 
+        if env_seed:
+            if not isinstance(env_seed, int) or env_seed < 0:
+                env_seed = None
+            else:
+                num_evaluations = 1
+        else:
+            assert num_evaluations > 0
 
-        # head_row = ['Generation', 'Eval_per_Gen', 'Eval_Rew_Mean', 'Eval_Rew_Std', 'Eval_Len_Mean']
-        #
-        # for i in range(eval_count):
-        #     head_row.append('Rew_' + str(i))
-        #     head_row.append('Len_' + str(i))
-        #
-        # data = []
-        #
-        # results_list = []
-        # pool = Pool(os.cpu_count())
-        #
-        # for model_file_path in self.model_file_paths[::skip]:
-        #     results = []
-        #     gen = self.parse_generation_number(model_file_path)
-        #
-        #     for _ in range(eval_count):
-        #         results.append(pool.apply_async(func=self.run_model, args=(model_file_path,)))
-        #     results_list.append((results, gen))
-        #
-        # for (results, gen) in results_list:
-        #     for i in range(len(results)):
-        #         results[i] = results[i].get()
-        #         if results[i] == [None, None]:
-        #             print("The provided model file produces non finite numbers. Stopping.")
-        #             return
-        #
-        #     rewards = np.array(results)[:, 0]
-        #     lengths = np.array(results)[:, 1]
-        #
-        #     row = [gen,
-        #            eval_count,
-        #            np.mean(rewards),
-        #            np.std(rewards),
-        #            np.mean(lengths)]
-        #
-        #     assert len(rewards) == len(lengths)
-        #     for i in range(len(rewards)):
-        #         row.append(rewards[i])
-        #         row.append(lengths[i])
-        #
-        #     data.append(row)
-        #
-        # pool.close()
-        # pool.join()
-        #
-        # self.evaluation = pd.DataFrame(data, columns=head_row)
-        # if save:
-        #     self.save_evaluation()
-        # # Only copy the mean values in the merged data
-        # self.data = self.merge_log_eval()
-        #
-        # if delete_models:
-        #     self.delete_model_files
-        #
-        # return self.data
+        assert num_workers > 0
 
-        pass
+        if not self.model_files:
+            return
+
+        # Is later needed for the head row in the pd.DataFrame
+        columns = []
+        for col in config_values.EvaluationColumnHeaders:
+            columns.append(col.value)
+
+        for i in range(num_evaluations):
+            columns.append("Rew_{}".format(i))
+            columns.append("Len_{}".format(i))
+
+        evaluation_data = []
+        with mp.Pool(processes=num_workers) as pool:
+            results = []
+            # First generate the reward data by running num_evaluations episodes in parallel
+            for i, (generation, model_file) in enumerate(self.model_files.items()):
+                generation_results = []
+                for _ in range(num_evaluations):
+                    generation_results.append(
+                        pool.apply_async(
+                            func=es_utils.rollout_helper, args=(
+                                self.config.env_id, model_file, False, True, env_seed, False, None)))
+
+                results.append((generation, generation_results))
+
+            # In a mp.Pool the calculated data must be gathered using .get() on the results
+            for (gen, generation_results) in results:
+                for i, generation_result in enumerate(generation_results):
+                    generation_results[i] = generation_result.get()
+                    if generation_result == [None, None]:
+                        return  # Assertion error in rollout
+
+                # Remember rollout_helper returns one array with two entries. First the reward, second the timesteps
+                generation_rewards = np.array(generation_results)[:, 0]
+                generation_lengths = np.array(generation_results)[:, 1]
+
+                # TODO maybe match EvaluationColumnHeaders. This is kind of arbitrary here
+                generation_row = [
+                    gen, num_evaluations, np.mean(generation_rewards), np.std(generation_rewards),
+                    np.mean(generation_lengths)
+                ]
+
+                assert len(generation_rewards) == len(generation_lengths)
+                for reward, length in zip(generation_rewards, generation_lengths):
+                    # Extend with tuple is faster than append or extend with list:
+                    # https://stackoverflow.com/a/14446207/11162327
+                    generation_row.extend((reward, length))
+
+                evaluation_data.append(generation_row)
+
+        self.evaluation = pd.DataFrame(data=evaluation_data, columns=columns)
+
+        if save:
+            # Access any model file (at least one is existing otherwise we have already returned) and get the directory
+            directory = os.path.dirname(next(iter(self.model_files.values())))
+            self.evaluation.to_csv(os.path.join(directory, 'evaluation.csv'))
+
+        # TODO run validate_evaluation
+        return self.evaluation
 
     def visualize(self, env_seed=None, generation=-1, force=False):
 
