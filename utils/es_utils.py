@@ -425,11 +425,9 @@ def rollout(
         env.render()
 
     ob = env.reset()
-    acs = [] # TODO remove
     for _ in range(timestep_limit):
         # The model wants an input in shape (X, ob_shape). With ob[None] this will be (1, ob_shape)
         ac, time_predict = act(ob[None], model, random_stream=random_stream, ac_noise_std=ac_noise_std)
-        acs.append(ac[0]) # TODO remove
         times_predict.append(time_predict)
         if save_obs:
             obs.append(ob)
@@ -448,8 +446,8 @@ def rollout(
             break
     rews = np.array(rews, dtype=np.float32)
     if save_obs:
-        return np.array(rews), t, times_predict, np.array(obs), np.array(acs) # TODO remove
-    return rews, t, times_predict, acs # TODO remove
+        return rews, t, times_predict, np.array(obs, dtype=np.float32)
+    return rews, t, times_predict
 
 
 def load_model(model_file_path):
@@ -479,18 +477,40 @@ def load_model(model_file_path):
     return model
 
 
-def load_and_rollout(env_id, model_file_path, env_seed=None, record=False):
+def rollout_helper(
+        env_id, model_file_path,
+        record=False, record_force=True,
+        env_seed=None, render=False, timestep_limit=None):
+    """Wraps rollout in a helper function where an environment id and a model file path can be provided instead of the
+    corresponding objects. This will be used for example in the evaluation where model file paths are processed in a
+    multiprocessing pool. In addition, the environment can be recorded for visualising purposes.
+
+    In a multiprocessing pool a function is given to the pool. When iterating through the model file paths, it is
+    simpler to use this helper function for creating the environment and model object.
+
+    :param env_id: A valid environment ID for which an environment shall be created
+    :param model_file_path: A valid file path to the model file which is used for the rollout
+    :param record: If True, the episode will be recorded as a .mp4 video and saved in the same folder as the model
+    :param record_force: If True all recordings in the folder of the model will be deleted
+    :param env_seed: The seed for the environment, is used in rollout()
+    :param render: If True, the environment will be rendered during the episode, is used in rollout()
+    :param timestep_limit: Specifies the maximum timesteps for the episode, is used in rollout()
+    :return: A NumPy array with the reward for the episode and the number of timesteps
+    """
     env = gym.make(env_id)
 
     if record:
-        env = wrappers.Monitor(env, os.path.dirname(model_file_path), force=True)
+        # TODO maybe increase the resolution (for pybullet envs)
+        env = wrappers.Monitor(env, os.path.dirname(model_file_path), force=record_force)
 
     model = load_model(model_file_path)
 
     try:
-        rewards, length, _, obs, acs = rollout(env, model, env_seed=env_seed, save_obs=True) # TODO remove acs
+        rewards, length, _ = rollout(
+            env, model,
+            env_seed=env_seed, render=render, timestep_limit=timestep_limit)
     except AssertionError:
         # Is thrown when for example ac is a list which has at least one entry with NaN
-        return [None, None]
+        return np.array([None, None])
 
-    return [rewards.sum(), length], obs, acs, rewards # TODO remove acs and rewards
+    return np.array([rewards.sum(), length])
