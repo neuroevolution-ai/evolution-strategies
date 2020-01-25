@@ -38,30 +38,30 @@ class TrainingRun:
                 "Saving the file dictionaries raised an issue, possibly when sorting it by the keys. Aborting.")
 
     def evaluate(self, env_seed=None, num_evaluations=5, num_workers=os.cpu_count(), force=False, save=True):
+        """Evaluate the TrainingRun by running num_evaluation episodes per model file from this TrainingRun. The
+        rewards and lengths (timesteps per episode) get saved and median and standard deviation of the results are
+        calculated and saved in self.evaluation in a pandas DataFrame.
 
-        """
-        TODO
-        1. force False -> gucken ob schon erstellt. wenn nicht dann weiter anonsten return
-        2. wenn env_seed angegeben nur einmal durchlaufen, da immer das gleiche ergebnis kommt
-        3. wenn env_seed none -> num_evaluations nehmen. assertion > 0
-        5. num_workers assert > 0
-        6. env_seed assert integer oder None
-        4. checken ob model files da sind
-        Dann evaluation durchführen.
-        Auf num_workers verteilen
-        Je Generation eine Zeile mit den enstprechenden Werten
-        
-        Wenn save=True als csv evaluation.csv abspeichern
-        """
+        When using env_seed, num_evaluation will be set to 1 automatically since the reward and timesteps are always
+        the same for the same environment seed. When using force the current evaluation save in the TrainingRun
+        is overwritten. With the save parameter the evaluation is stored as a .csv file.
 
+        :param env_seed: The environment seed which shall be used, if it is set, num_evaluations is set to 1,
+            defaults to None
+        :param num_evaluations: The number of episodes which shall be run per model, defaults to 5
+        :param num_workers: Defines the number of workers used to calculate the evaluations, defaults to os.cpu_count()
+        :param force: If True, the saved evaluation, if one exists, will be overwritten, defaults to False
+        :param save: If True, the evaluation will be saved as a .csv file, defaults to True
+        :return: A pandas DataFrame containing the evaluation or None if an error occured
+        """
         if not force:
             if self.evaluation:
-                # TODO print already evaluated. Maybe in experiment?
-                return
+                print("This TrainingRun has already been evaluated. If a new evaluation shall be done, set force=True.")
+                return self.evaluation
 
         if not self.model_files:
-            # TODO print no model files. should be handled in experiment?
-            return
+            print("This TrainingRun cannot be evaluated because it does not have any model files.")
+            return None
 
         if env_seed:
             if not isinstance(env_seed, int) or env_seed < 0:
@@ -72,9 +72,6 @@ class TrainingRun:
             assert num_evaluations > 0
 
         assert num_workers > 0
-
-        if not self.model_files:
-            return
 
         # Is later needed for the head row in the pd.DataFrame
         columns = []
@@ -104,7 +101,7 @@ class TrainingRun:
                 for i, generation_result in enumerate(generation_results):
                     generation_results[i] = generation_result.get()
                     if generation_result == [None, None]:
-                        return  # Assertion error in rollout
+                        return None  # Assertion error in rollout
 
                 # Remember rollout_helper returns one array with two entries. First the reward, second the timesteps
                 generation_rewards = np.array(generation_results)[:, 0]
