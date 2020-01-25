@@ -220,6 +220,7 @@ def parse_generation_number(model_file_path):
     """
     # Get the series of numbers to the most right of the string, except for a 2 or 3 character long file ending
     # Example: "openaigym.video.1.111.video000013.mp4" would return a "13"
+    # TODO check if video works
     match = re.match(r".*?([0-9]+)\.\w\w\w?$", model_file_path)
     if match:
         return int(match.group(1))
@@ -357,6 +358,30 @@ def index_experiments(experiments_folder):
     return experiments
 
 
+def get_video_file(generation, directory):
+    """Returns the file path to a video in the directory, matching the generation number.
+
+    This will delete the additional .json files created by the OpenAI Gym.
+
+    :param generation: The generation for which the video shall be returned
+    :param directory: The directory containing the video which shall be returned
+    :return: If a video can be found matching the generation the file path to it gets returned, otherwise None
+    """
+    video_file_path = None
+    with os.scandir(directory) as it:
+        for entry in it:
+            if entry.is_file():
+                if (entry.name.endswith(".meta.json") or
+                        entry.name.endswith(".manifest.json") or
+                        entry.name.endswith(".stats.json")):
+                    os.remove(entry.path)
+                elif entry.name.endswith(".mp4") and parse_generation_number(entry.name) == generation:
+                    # Immediate return is not good, since the json files from the Monitor from OpenAI Gym need to be
+                    # deleted
+                    video_file_path = entry.path
+    return video_file_path
+
+
 def act(ob, model, random_stream=None, ac_noise_std=0):
     """Takes an observation and a model with which an action shall be calculated.
 
@@ -480,7 +505,7 @@ def load_model(model_file_path):
 
 def rollout_helper(
         env_id, model_file_path,
-        record=False, record_force=True,
+        record=False, record_force=False,
         env_seed=None, render=False, timestep_limit=None):
     """Wraps rollout in a helper function where an environment id and a model file path can be provided instead of the
     corresponding objects. This will be used for example in the evaluation where model file paths are processed in a
@@ -511,7 +536,12 @@ def rollout_helper(
             env, model,
             env_seed=env_seed, render=render, timestep_limit=timestep_limit)
     except AssertionError:
+        if record:
+            return None
         # Is thrown when for example ac is a list which has at least one entry with NaN
         return np.array([None, None])
+
+    if record:
+        return get_video_file(parse_generation_number(model_file_path), os.path.dirname(model_file_path))
 
     return np.array([rewards.sum(), length])

@@ -132,15 +132,52 @@ class TrainingRun:
         return self.evaluation
 
     def visualize(self, env_seed=None, generation=-1, force=False):
+        """This will visualize a generation by running an episode and recording it. The resulting video file will
+        be returned as a path to the video file.
 
+        :param env_seed: This sets the environment seed for the episode, defaults to None
+        :param generation: Specify which generation shall be visualized, defaults to -1 which means the last generation
+            in the model_files dict
+        :param force: If True, an already saved video of the generation will be overwritten, defaults to False
+        :return: The path to the video file or None if an error occured, for example the generation is invalid or a
+            model file for the specified generation does not exist
         """
-        TODO
-        1. assert env_seed integer; assert generation integer, -1 oder >= 0;
-        2. Wenn nicht force nur weitermachen wenn visualisierung noch nicht existiert
-        3. Für angegebene Generation visualisierung durchführen, ggf. seed setzen
-        4. video Objekt erstellen, filepath setzen und returnen
-        """
-        pass
+        if not self.video_files:
+            return None
+
+        if generation == -1:
+            # We are using a dict so we need to do a little more to get the last generation
+            generation = list(self.model_files.keys())[-1]
+
+        model_file_path = None
+        try:
+            video_file_path = self.video_files[generation]
+        except KeyError:
+            # Video file for this generation is not present, check if a model file for this generation exists
+            try:
+                model_file_path = self.model_files[generation]
+            except KeyError:
+                # For this generation no model exists
+                print(
+                    "There is no model file for generation {}.",
+                    "Please provide another generation for the visualization.".format(generation))
+                return None
+        else:
+            if not force:
+                # Found the video file and force is not required therefore we can return the path to the file
+                return video_file_path
+
+        if env_seed:
+            if not isinstance(env_seed, int) or env_seed < 0:
+                env_seed = None
+
+        video_file_path = es_utils.rollout_helper(self.config.env_id, model_file_path, record=True, env_seed=env_seed)
+
+        # Could return None if not, add it to the dict
+        if video_file_path:
+            self.video_files[generation] = video_file_path
+
+        return video_file_path
 
     def plot_training_run(self, x_value, y_value, y_std=None, x_label=None, y_label=None):
 
