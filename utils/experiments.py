@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import multiprocessing as mp
 import numpy as np
 import os
@@ -180,17 +181,58 @@ class TrainingRun:
         return video_file_path
 
     def plot_training_run(self, x_value, y_value, y_std=None, x_label=None, y_label=None):
+        """Plots the given x_value and y_value keys with possible shaded area by providing the y_std key.
 
+        The parameters x_value, y_value and y_std must be of type config_values.LogColumnHeaders or
+        config_values.EvaluationColumnHeaders.
+
+        :param x_value: The key for data from the log or evaluation file for the x-axis
+        :param y_value: The key for data from the log or evaluation file for the y-axis
+        :param y_std: The key for data from the log or evaluation file for the shaded area indicating the
+            standard deviation, defaults to None
+        :param x_label: A string to label the x-axis, defaults to None
+        :param y_label: A string to label the y-axis, defaults to None
+        :return: Nothing, the plot will be automatically shown when no errors occured, otherwise an error message
+            is printed.
         """
-        TODO
-        1. x_value, y_value, ggf y_std checken ob diese Spaltennamen exisitieren
-        2. assert x_label, y_label string oder None
-        3. Values plotten mit matplotlib
-        Auf eventuelle Fehler achten:
-        - Datenspalten leer
-        - Evaluation möglicherweise nicht existent falls daraus geplottet werden soll
-        """
-        pass
+        _x, _y, _y_std = None, None, None
+
+        # It can occur that there is no log file or no evaluation file and the provided parameters do not match
+        # the data. This will be checked first before plotting can happen
+        if isinstance(x_value, config_values.LogColumnHeaders) and self.log:
+            _x = self.log[x_value.name]
+        elif isinstance(x_value, config_values.EvaluationColumnHeaders) and self.evaluation:
+            _x = self.evaluation[x_value.name]
+
+        if isinstance(y_value, config_values.LogColumnHeaders) and self.log:
+            _y = self.log[y_value.name]
+        elif isinstance(y_value, config_values.EvaluationColumnHeaders) and self.evaluation:
+            _y = self.evaluation[y_value.name]
+
+        if isinstance(y_std, config_values.LogColumnHeaders) and self.log:
+            _y_std = self.log[y_std.name]
+        elif isinstance(y_std, config_values.EvaluationColumnHeaders) and self.evaluation:
+            _y_std = self.evaluation[y_std.name]
+
+        if (_x is None or _y is None) or (_y_std and not _y_std):
+            print(
+                "'{}', '{}' and/or '{}' are invalid keys for the log and/or evaluation or the log and/or evaluation"
+                " does not exist for this training run, and can therefore not be plotted."
+                " Please provide valid keys.".format(x_value, y_value, y_std))
+            return
+
+        plt.plot(_x, _y)
+        if y_std:
+            # If the color of the plots and the shaded area shall be changed, this is the place to do so
+            plt.fill_between(_x, _y - _y_std, _y + _y_std, alpha=0.5)
+
+        if x_label and isinstance(x_label, str):
+            plt.xlabel(x_label)
+
+        if y_label and isinstance(y_label, str):
+            plt.ylabel(y_label)
+
+        plt.show()
 
     def delete_files(self, interval=1, model_files=False, ob_normalization_files=False, optimizer_files=False):
 
