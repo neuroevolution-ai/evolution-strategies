@@ -235,16 +235,34 @@ class TrainingRun:
         plt.show()
 
     def delete_files(self, interval=1, model_files=False, ob_normalization_files=False, optimizer_files=False):
+        """Deletes the files from disk depending on which interval and which type of files is given.
 
+        :param interval: Iterates in this interval through the files and deletes them, defaults to 1
+        :param model_files: If True the model files get deleted, defaults to False
+        :param ob_normalization_files: If True the observation normalization files get deleted, defaults to False
+        :param optimizer_files: If True the optimizer files get deleted, defaults to False
+        :return: Nothing
         """
-        TODO
-        1. assert interval > 0
-        2. Checken welche files gelöscht werden sollen, dann im interval die Dateien löschen
-        Achtung:
-        - möglicherweise leere dicts bei den files
-        - interval könnte irgendwie überlaufen oder zu klein sein
-        """
-        pass
+        if interval <= 0:
+            return
+
+        dict_list = []
+        if model_files and self.model_files:
+            dict_list.append(self.model_files)
+        if ob_normalization_files and self.ob_normalization_files:
+            dict_list.append(self.ob_normalization_files)
+        if optimizer_files and self.optimizer_files:
+            dict_list.append(self.optimizer_files)
+
+        for _dict in dict_list:
+            for k, v in list(_dict.items())[::interval]:
+                try:
+                    os.remove(v)
+                    # Don't forget to delete the entry from the dict to avoid further referencing.
+                    del _dict[k]
+                except FileNotFoundError:
+                    print("File not found, continuing.")
+                    continue
 
     def get_training_state(self, generation=-1):
 
