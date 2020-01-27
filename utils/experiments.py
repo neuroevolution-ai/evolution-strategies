@@ -308,22 +308,48 @@ class Experiment:
     def evaluate(
             self,
             env_seed=None, num_evaluations=5, num_workers=os.cpu_count(), force=False, save=True):
+        """Evaluates every TrainingRun object of this Experiment. The parameters are directly given to the evaluate
+        method of TrainingRun.
 
+        :param env_seed: The environment seed which shall be used, if it is set, num_evaluations is set to 1,
+            defaults to None
+        :param num_evaluations: The number of episodes which shall be run per model, defaults to 5
+        :param num_workers: Defines the number of workers used to calculate the evaluations, defaults to os.cpu_count()
+        :param force: If True, the saved evaluation, if one exists, will be overwritten, defaults to False
+        :param save: If True, the evaluation will be saved as a .csv file, defaults to True
+        :return: A list of the evaluations
         """
-        TODO
-        1. Evaluiere jedes TrainingRun mit den Parametern
-        2. Auf assertions / fehler achten eingehen
-        """
-        pass
+        evaluations = []
+        for training_run in self.training_runs:
+            try:
+                evaluation = training_run.evaluate(
+                    env_seed=env_seed, num_evaluations=num_evaluations, num_workers=num_workers, force=force, save=save)
+            except AssertionError as e:
+                print("One of the parameters for the evaluation is false and threw an AssertionError:", e)
+                return []
+            else:
+                if evaluation:
+                    evaluations.append(evaluation)
+
+        return np.array(evaluations)
 
     def visualize(self, env_seed=None, generation=-1, force=False):
+        """Visualizes every TrainingRun object of this Experiment by running the visualization method from TrainingRun
+        with the parameters given here.
 
+        :param env_seed: This sets the environment seed for the episode, defaults to None
+        :param generation: Specify which generation shall be visualized, defaults to -1 which means the last generation
+            in the model_files dict
+        :param force: If True, an already saved video of the generation will be overwritten, defaults to False
+        :return: A list of the video files, if a TrainingRun could not be visualized, the object is ignored
         """
-        TODO
-        1. Jedes Training run visualize mit den Parametern aufrufen
-        2. Auf assertions / fehler achten
-        """
-        pass
+        video_files = []
+        for training_run in self.training_runs:
+            video_file = training_run.visualize(env_seed=env_seed, generation=generation, force=force)
+            if video_file:
+                video_files.append(video_file)
+
+        return video_files
 
     def delete_files(self, interval=1, model_files=False, ob_normalization_files=False, optimizer_files=False):
 
