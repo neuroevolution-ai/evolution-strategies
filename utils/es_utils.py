@@ -11,11 +11,10 @@ import time
 import pybullet_envs
 #import roboschool TODO import again when finished debugging
 
-from config_objects import Optimizations, ModelStructure, Config
-from config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders
-from es_errors import InvalidTrainingError
-from experiments import TrainingRun, Experiment
-
+from .config_objects import Optimizations, ModelStructure, Config
+from .config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders
+from .es_errors import InvalidTrainingError
+from . import experiments
 
 def validate_config_file(config_file):
     """
@@ -212,6 +211,33 @@ def validate_evaluation(evaluation_input):
     return evaluation
 
 
+def validate_plot_values(x_value, y_value, y_std=None, log=None, evaluation=None):
+    # TODO docstring
+    _x, _y, _y_std = None, None, None
+
+    # It can occur that there is no log file or no evaluation file and the provided parameters do not match
+    # the data. This will be checked first before plotting can happen
+    if isinstance(x_value, LogColumnHeaders) and log:
+        _x = log[x_value.name]
+    elif isinstance(x_value, EvaluationColumnHeaders) and evaluation:
+        _x = evaluation[x_value.name]
+
+    if isinstance(y_value, LogColumnHeaders) and log:
+        _y = log[y_value.name]
+    elif isinstance(y_value, EvaluationColumnHeaders) and evaluation:
+        _y = evaluation[y_value.name]
+
+    if isinstance(y_std, LogColumnHeaders) and log:
+        _y_std = log[y_std.name]
+    elif isinstance(y_std, EvaluationColumnHeaders) and evaluation:
+        _y_std = evaluation[y_std.name]
+
+    if (_x is None or _y is None) or (_y_std and not _y_std):
+        return None, None, None
+
+    return _x, _y, _y_std
+
+
 def parse_generation_number(model_file_path):
     """Parses the generation number from a given file path, for example from a model file.
 
@@ -296,7 +322,7 @@ def index_training_folder(training_folder):
                     evaluation_file = entry
 
     try:
-        training_run = TrainingRun(config_file,
+        training_run = experiments.TrainingRun(config_file,
                                    log_file,
                                    evaluation_file,
                                    video_files,
@@ -351,7 +377,7 @@ def index_experiments(experiments_folder):
                     i += 1
         for training_run_list in different_experiments.values():
             sample_training_run = training_run_list[-1]
-            experiments.append(Experiment(
+            experiments.append(experiments.Experiment(
                 sample_training_run.optimizations, sample_training_run.model_structure, sample_training_run.config,
                 training_run_list))
 

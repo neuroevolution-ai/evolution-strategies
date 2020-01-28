@@ -4,9 +4,9 @@ import numpy as np
 import os
 import pandas as pd
 
-from es_errors import InvalidTrainingError
-import es_utils
-import config_values
+from .es_errors import InvalidTrainingError
+from . import es_utils
+from . import config_values
 
 class TrainingRun:
     def __init__(self,
@@ -195,26 +195,10 @@ class TrainingRun:
         :return: Nothing, the plot will be automatically shown when no errors occured, otherwise an error message
             is printed.
         """
-        _x, _y, _y_std = None, None, None
+        _x, _y, _y_std = es_utils.validate_plot_values(
+            x_value, y_value, y_std=y_std, log=self.log, evaluation=self.evaluation)
 
-        # It can occur that there is no log file or no evaluation file and the provided parameters do not match
-        # the data. This will be checked first before plotting can happen
-        if isinstance(x_value, config_values.LogColumnHeaders) and self.log:
-            _x = self.log[x_value.name]
-        elif isinstance(x_value, config_values.EvaluationColumnHeaders) and self.evaluation:
-            _x = self.evaluation[x_value.name]
-
-        if isinstance(y_value, config_values.LogColumnHeaders) and self.log:
-            _y = self.log[y_value.name]
-        elif isinstance(y_value, config_values.EvaluationColumnHeaders) and self.evaluation:
-            _y = self.evaluation[y_value.name]
-
-        if isinstance(y_std, config_values.LogColumnHeaders) and self.log:
-            _y_std = self.log[y_std.name]
-        elif isinstance(y_std, config_values.EvaluationColumnHeaders) and self.evaluation:
-            _y_std = self.evaluation[y_std.name]
-
-        if (_x is None or _y is None) or (_y_std and not _y_std):
+        if not _x and not _y and not _y_std:
             print(
                 "'{}', '{}' and/or '{}' are invalid keys for the log and/or evaluation or the log and/or evaluation"
                 " does not exist for this training run, and can therefore not be plotted."
@@ -241,7 +225,7 @@ class TrainingRun:
         :param model_files: If True the model files get deleted, defaults to False
         :param ob_normalization_files: If True the observation normalization files get deleted, defaults to False
         :param optimizer_files: If True the optimizer files get deleted, defaults to False
-        :return: Nothing
+        :return: None
         """
         if interval <= 0:
             return
@@ -352,13 +336,18 @@ class Experiment:
         return video_files
 
     def delete_files(self, interval=1, model_files=False, ob_normalization_files=False, optimizer_files=False):
+        """Deletes the files in the stored TrainingRun objects of this experiment, depending on the parameters.
 
+        :param interval: Iterates in this interval through the files and deletes them, defaults to 1
+        :param model_files: If True the model files get deleted, defaults to False
+        :param ob_normalization_files: If True the observation normalization files get deleted, defaults to False
+        :param optimizer_files: If True the optimizer files get deleted, defaults to False
+        :return: None
         """
-        TODO
-        1. Auf jedem TrainingRun delete_files mit den Parametern aufrufen
-        2. Auf fehler /Assertions achten
-        """
-        pass
+        for training_run in self.training_runs:
+            training_run.delete_files(
+                interval=interval, model_files=model_files, ob_normalization_files=ob_normalization_files,
+                optimizer_files=optimizer_files)
 
     def plot_experiment(self, x_value, y_value, y_std=None, x_label=None, y_label=None):
 
@@ -369,120 +358,36 @@ class Experiment:
         3. Dann Daten von allen TrainingRuns holen -> Mittelwert bilden und darstellen
         4. Für y_std Standardabweichung bilden und dann die Daten darstellen
         """
-        pass
+        x_data = []
+        y_data = []
+        y_std_data = []
+        for training_run in self.training_runs:
+            assert isinstance(training_run, TrainingRun)
+            _x, _y, _y_std = es_utils.validate_plot_values(
+                x_value, y_value, y_std=y_std, log=training_run.log, evaluation=training_run.evaluation)
 
-    #
-    # def __init__(self, config, training_runs):
-    #     self.config = config
-    #     self.training_runs = training_runs
-    #     self.num_training_runs = len(self.training_runs)
-    #     self.mean_data = None
-    #     self.std_data = None
-    #
-    #     self.runs_evaluated = True
-    #     for run in self.training_runs:
-    #         if run.no_evaluation:
-    #             self.runs_evaluated = False
-    #
-    #     # Every run has already an evaluation, therefore initialize self.mean_data and self.std_data with it
-    #     if self.runs_evaluated is True:
-    #         self.evaluate()
-    #
-    # def evaluate(self, force=False, eval_count=5, skip=None, save=False, delete_models=False):
-    #     data = []
-    #     no_models = False
-    #     if not self.runs_evaluated:
-    #         for training_run in self.training_runs:
-    #             no_models = training_run.no_models
-    #             if no_models is True:
-    #                 break
-    #
-    #     if no_models:
-    #         print("The training runs do not provide model files, therefore the experiment cannot be evaluated." +
-    #               "Please provide at least one .h5 file.")
-    #     else:
-    #         for training_run in self.training_runs:
-    #             d = training_run.evaluate(force, eval_count, skip, save, delete_models)
-    #             if d is None:
-    #                 return
-    #             data.append(d)
-    #         concatenated = pd.concat([d for d in data])
-    #         self.mean_data = concatenated.groupby(by='Generation', level=0).mean()
-    #         self.std_data = concatenated.groupby(by='Generation', level=0).std()
-    #
-    # def visualize(self, force=False):
-    #     for run in self.training_runs:
-    #         self.video_file = run.visualize(force=force)
-    #         if self.video_file is not None:
-    #             break
-    #     if self.video_file is None:
-    #         print("The training runs do not provide model files, therefore the experiment cannot be visualized." +
-    #               "Please provide at least one .h5 file so a video can be recorded.")
-    #     return self.video_file
-    #
-    # def delete_model_files(self, save_last=False):
-    #     for run in self.training_runs:
-    #         run.delete_model_files(save_last)
-    #
-    # def get_num_training_runs(self):
-    #     return self.num_training_runs
-    #
-    # def get_all_training_runs(self):
-    #     return [run for run in self.training_runs]
-    #
-    # def get_all_logs(self):
-    #     return [run.log for run in self.training_runs]
-    #
-    # def get_all_evaluations(self):
-    #     return [run.evaluation for run in self.training_runs]
-    #
-    # def print_config(self):
-    #     print(json.dumps(self.config, indent=4))
-    #
-    # def plot_reward_timestep(self):
-    #     if self.mean_data is None:
-    #         print("You did not evaluate the results. Please run evaluate() on this experiment. The plotted results"
-    #               + " are used from the log file.")
-    #         for run in self.training_runs:
-    #             run.plot_reward_timestep()
-    #     else:
-    #         y_std = None
-    #         # If we only have one training run the standard deviation will be NaN across all values and therefore
-    #         # not be plotted. Use standard deviation from the only evaluation we have
-    #         if self.num_training_runs > 1:
-    #             y_std = self.std_data.Eval_Rew_Mean
-    #         plot(self.mean_data.TimestepsSoFar, 'Timesteps',
-    #              self.mean_data.Eval_Rew_Mean, 'Cummulative reward',
-    #              y_std)
-    #         print("Displayed is the mean reward of {} different runs over timesteps with different random seeds." +
-    #               " If there was more than one run, the shaded region is the standard deviation of the mean reward.")
-    #
-    # def plot_reward_generation(self):
-    #     if self.mean_data is None:
-    #         print("You did not evaluate the results. Please run evaluate() on this experiment.")
-    #     else:
-    #         y_std = None
-    #         # If we only have one training run the standard deviation will be NaN across all values and therefore
-    #         # not be plotted. Use standard deviation from the only evaluation we have
-    #         if self.num_training_runs > 1:
-    #             y_std = self.std_data.Eval_Rew_Mean
-    #         plot(self.mean_data.Generation, 'Generation',
-    #              self.mean_data.Eval_Rew_Mean, 'Cummulative reward',
-    #              y_std)
-    #         print("Displayed is the mean reward of {} different runs over timesteps with different random seeds." +
-    #               " If there was more than one run, the shaded region is the standard deviation of the mean reward.")
-    #
-    # def plot_timesteps_timeelapsed(self):
-    #     if self.mean_data is None:
-    #         print("You did not evaluate the results. Please run evaluate() on this experiment.")
-    #     else:
-    #         y_std = None
-    #         # If we only have one training run the standard deviation will be NaN across all values and therefore
-    #         # not be plotted. Use standard deviation from the only evaluation we have
-    #         if self.num_training_runs > 1:
-    #             y_std = self.std_data.TimestepsSoFar
-    #         plot(self.mean_data.TimeElapsed, 'Time elapsed (s)',
-    #              self.mean_data.TimestepsSoFar, 'Timesteps',
-    #              y_std)
-    #         print("Displayed is the mean reward of {} different runs over timesteps with different random seeds." +
-    #               " If there was more than one run, the shaded region is the standard deviation of the mean reward.")
+            if not _x and not _y and not _y_std:
+                continue
+
+            x_data.append(_x)
+            y_data.append(_y)
+            if y_std:
+                y_std_data.append(_y_std)
+
+        if x_data and y_data:
+            x = np.mean(x_data, axis=0)
+            y = np.mean(y_data, axis=0)
+            plt.plot(x, y)
+
+            if y_std:
+                _y_std = np.std(y_data, axis=0)
+                # If the color of the plots and the shaded area shall be changed, this is the place to do so
+                plt.fill_between(x, y - y_std, y + y_std, alpha=0.5)
+
+            if x_label and isinstance(x_label, str):
+                plt.xlabel(x_label)
+
+            if y_label and isinstance(y_label, str):
+                plt.ylabel(y_label)
+
+            plt.show()
