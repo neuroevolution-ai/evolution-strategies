@@ -33,6 +33,7 @@ RUN pip install --quiet \
     gym[atari] \
     roboschool==1.0.48 \
     pybullet \
+    torch \
     opencv-python \
     neat-python
 
