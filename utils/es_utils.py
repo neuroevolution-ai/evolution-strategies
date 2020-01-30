@@ -9,7 +9,7 @@ import time
 
 # Needed for registering the environments of these packages to the OpenAI Gym
 import pybullet_envs
-#import roboschool TODO import again when finished debugging
+# import roboschool # TODO import again when finished debugging
 
 from .config_objects import Optimizations, ModelStructure, Config
 from .config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders
@@ -263,7 +263,7 @@ def sort_dict(dictionary):
     :return: The sorted dictionary, ascending by Integer keys.
     """
     try:
-        sorted_dict = sorted(dictionary.items(), key=lambda x: int(x[0]))
+        sorted_dict = dict(sorted(dictionary.items(), key=lambda x: int(x[0])))
     except ValueError or AttributeError:
         raise
     else:
@@ -322,13 +322,14 @@ def index_training_folder(training_folder):
                     evaluation_file = entry
 
     try:
-        training_run = experiments.TrainingRun(config_file,
-                                   log_file,
-                                   evaluation_file,
-                                   video_files,
-                                   model_files,
-                                   ob_normalization_files,
-                                   optimizer_files)
+        training_run = experiments.TrainingRun(
+            config_file,
+            log_file,
+            evaluation_file,
+            video_files,
+            model_files,
+            ob_normalization_files,
+            optimizer_files)
     except InvalidTrainingError:
         raise
     else:
@@ -348,7 +349,7 @@ def index_experiments(experiments_folder):
     """
     experiments = []
 
-    if os.isdir(experiments_folder):
+    if os.path.isdir(experiments_folder):
         # This will get the first entry in walk and ouput the directories which are stored in the second entry of the
         # tuple
         sub_directories = next(os.walk(experiments_folder))[1]
@@ -515,7 +516,7 @@ def load_model(model_file_path):
     # and the program does not work
     import tensorflow as tf
 
-    from es_custom_layers import Normc_initializer, ObservationNormalizationLayer, DiscretizeActionsUniformLayer
+    from .es_custom_layers import Normc_initializer, ObservationNormalizationLayer, DiscretizeActionsUniformLayer
 
     custom_objects = {"Normc_initializer": Normc_initializer,
                       "ObservationNormalizationLayer": ObservationNormalizationLayer,
@@ -553,7 +554,7 @@ def rollout_helper(
 
     if record:
         # TODO maybe increase the resolution (for pybullet envs)
-        env = wrappers.Monitor(env, os.path.dirname(model_file_path), force=record_force)
+        env = wrappers.Monitor(env, os.path.join(os.path.dirname(model_file_path), "0/"), force=record_force)
 
     model = load_model(model_file_path)
 

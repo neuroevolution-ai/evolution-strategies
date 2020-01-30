@@ -8,6 +8,7 @@ from .es_errors import InvalidTrainingError
 from . import es_utils
 from . import config_values
 
+
 class TrainingRun:
     def __init__(self,
                  config_file,
@@ -56,7 +57,8 @@ class TrainingRun:
         :return: A pandas DataFrame containing the evaluation or None if an error occured
         """
         if not force:
-            if self.evaluation:
+            # if [pd.DataFrame] throws an error therefore use sightly longer version
+            if self.evaluation is not None:
                 print("This TrainingRun has already been evaluated. If a new evaluation shall be done, set force=True.")
                 return self.evaluation
 
@@ -143,7 +145,7 @@ class TrainingRun:
         :return: The path to the video file or None if an error occured, for example the generation is invalid or a
             model file for the specified generation does not exist
         """
-        if not self.video_files:
+        if not self.model_files:
             return None
 
         if generation == -1:
