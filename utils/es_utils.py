@@ -241,17 +241,31 @@ def validate_plot_values(x_value, y_value, y_std=None, log=None, evaluation=None
 def parse_generation_number(model_file_path):
     """Parses the generation number from a given file path, for example from a model file.
 
+    Only works with video files and files created by this program. If you plan to use it look at the code of this
+    function.
+
     :param model_file_path: A string containing a file path from where a generation number shall be extracted.
     :return: The generation number as an integer
     """
-    # Get the series of numbers to the most right of the string, except for a 2 or 3 character long file ending
-    # Example: "openaigym.video.1.111.video000013.mp4" would return a "13"
-    # TODO check if video works
-    match = re.match(r".*?([0-9]+)\.\w\w\w?$", model_file_path)
-    if match:
-        return int(match.group(1))
+    # We are only interested in the file name to avoid getting the false generation number remove the whole path
+    model_file_path = model_file_path.split("/")[-1]
 
-    return None
+    # Get all numbers in the string, the position depends on the file extension
+    match = re.findall(r"\d+", model_file_path)
+    
+    if match:
+
+        if model_file_path.endswith(".mp4"):
+            # Second number is the generation number in video files from the OpenAI Gym Monitor
+            if len(match) < 2:
+                return None
+            return int(match[1])
+        else:
+            # First number is the generation number in files created from evolution-strategies
+            # Last entry is not possible otherwise the number from the file extension is returned
+            if len(match) < 1:
+                return None
+            return int(match[0])
 
 
 def sort_dict(dictionary):
@@ -301,6 +315,7 @@ def index_training_folder(training_folder):
                 is_model_file = entry.name.endswith(".h5")
                 is_ob_normalization_file = entry.name.startswith("ob_normalization_")
                 is_optimizer_file = entry.name.startswith("optimizer_")
+                # TODO remove video file indexing from files
                 is_video_file = entry.name.endswith(".mp4")
 
                 if is_model_file or is_ob_normalization_file or is_optimizer_file or is_video_file:
@@ -320,6 +335,10 @@ def index_training_folder(training_folder):
                     log_file = entry
                 elif entry.name == "evaluation.csv":
                     evaluation_file = entry
+            elif entry.is_dir():
+                if entry.name == "videos":
+                    # TODO use index video directory here
+                    pass
 
     try:
         training_run = experiments.TrainingRun(
@@ -384,6 +403,14 @@ def index_experiments(experiments_folder):
 
     return experiments
 
+
+def index_video_files(video_directory):
+    with os.scandir(video_directory) as it:
+        for entry in it:
+            if entry.is_dir():
+                pass
+                # TODO iterate through every directory, get directory name as generation number and create dict with all
+                # TODO files in the end
 
 def get_video_file(generation, directory):
     """Returns the file path to a video in the directory, matching the generation number.
@@ -554,7 +581,10 @@ def rollout_helper(
 
     if record:
         # TODO maybe increase the resolution (for pybullet envs)
-        env = wrappers.Monitor(env, os.path.join(os.path.dirname(model_file_path), "0/"), force=record_force)
+        generation = parse_generation_number(model_file_path)
+        dirname = os.path.dirname(model_file_path)
+        env = wrappers.Monitor(
+            env, os.path.join(dirname, "videos", str(generation)), force=record_force, uid=generation)
 
     model = load_model(model_file_path)
 
@@ -569,6 +599,7 @@ def rollout_helper(
         return np.array([None, None])
 
     if record:
-        return get_video_file(parse_generation_number(model_file_path), os.path.dirname(model_file_path))
+        # Variables are present since they are created inside an "if record" above
+        return get_video_file(generation, dirname)
 
     return np.array([rewards.sum(), length])

@@ -152,29 +152,48 @@ class TrainingRun:
             # We are using a dict so we need to do a little more to get the last generation
             generation = list(self.model_files.keys())[-1]
 
+        video_file_path = None
         model_file_path = None
         try:
             video_file_path = self.video_files[generation]
         except KeyError:
-            # Video file for this generation is not present, check if a model file for this generation exists
-            try:
-                model_file_path = self.model_files[generation]
-            except KeyError:
-                # For this generation no model exists
-                print(
-                    "There is no model file for generation {}.",
-                    "Please provide another generation for the visualization.".format(generation))
-                return None
-        else:
+            # Video file not found
+            pass
+
+        # Video file for this generation is not present, check if a model file for this generation exists
+        try:
+            model_file_path = self.model_files[generation]
+        except KeyError:
+            # Model file not found
+            pass
+
+        if not video_file_path and not model_file_path:
+            # Force is now irrelevant
+            # We have no visualization and no model file for this generation
+            print(
+                "There is no model file for generation {}.",
+                "Please provide another generation for the visualization.".format(generation))
+            return None
+
+        if video_file_path:
             if not force:
-                # Found the video file and force is not required therefore we can return the path to the file
+                # Can return the current video file
                 return video_file_path
+            else:
+                if not model_file_path:
+                    # Wanted to redo the visualization but the model file could not be found, therefore return the old
+                    # one
+                    print(
+                        "Cannot create another visualization for generation {}, because the model file is no longer"
+                        " present. Returning the current visualization.".format(generation))
+                    return video_file_path
 
         if env_seed:
             if not isinstance(env_seed, int) or env_seed < 0:
                 env_seed = None
 
-        video_file_path = es_utils.rollout_helper(self.config.env_id, model_file_path, record=True, env_seed=env_seed)
+        video_file_path = es_utils.rollout_helper(
+            self.config.env_id, model_file_path, record=True, record_force=force, env_seed=env_seed)
 
         # Could return None if not, add it to the dict
         if video_file_path:
