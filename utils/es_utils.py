@@ -9,7 +9,7 @@ import time
 
 # Needed for registering the environments of these packages to the OpenAI Gym
 import pybullet_envs
-import roboschool # TODO import again when finished debugging
+import roboschool
 
 from .config_objects import Optimizations, ModelStructure, Config
 from .config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders

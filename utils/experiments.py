@@ -213,7 +213,7 @@ class TrainingRun:
             standard deviation, defaults to None
         :param x_label: A string to label the x-axis, defaults to None
         :param y_label: A string to label the y-axis, defaults to None
-        :return: Nothing, the plot will be automatically shown when no errors occured, otherwise an error message
+        :return: Nothing, the plot will be automatically shown when no errors occurred, otherwise an error message
             is printed.
         """
         _x, _y, _y_std = es_utils.validate_plot_values(
@@ -333,10 +333,10 @@ class Experiment:
                 print("One of the parameters for the evaluation is false and threw an AssertionError:", e)
                 return []
             else:
-                if evaluation:
+                if evaluation is not None:
                     evaluations.append(evaluation)
 
-        return np.array(evaluations)
+        return evaluations
 
     def visualize(self, env_seed=None, generation=-1, force=False):
         """Visualizes every TrainingRun object of this Experiment by running the visualization method from TrainingRun
@@ -371,13 +371,20 @@ class Experiment:
                 optimizer_files=optimizer_files)
 
     def plot_experiment(self, x_value, y_value, y_std=None, x_label=None, y_label=None):
+        """Plots the given x_value and y_value keys with possible shaded area by providing the y_std key.
 
-        """
-        TODO
-        1. x_value, y_value, ggf. y_std überprüfen
-        2. ggf x_label, y_label String überprüfen
-        3. Dann Daten von allen TrainingRuns holen -> Mittelwert bilden und darstellen
-        4. Für y_std Standardabweichung bilden und dann die Daten darstellen
+        Calculates the mean value across the indexed TrainingRun objects of this experiment.
+        The parameters x_value, y_value and y_std must be of type config_values.LogColumnHeaders or
+        config_values.EvaluationColumnHeaders.
+
+        :param x_value: The key for data from the log or evaluation file for the x-axis
+        :param y_value: The key for data from the log or evaluation file for the y-axis
+        :param y_std: The key for data from the log or evaluation file for the shaded area indicating the
+            standard deviation, defaults to None
+        :param x_label: A string to label the x-axis, defaults to None
+        :param y_label: A string to label the y-axis, defaults to None
+        :return: Nothing, the plot will be automatically shown when no errors occurred, otherwise an error message
+            is printed.
         """
         x_data = []
         y_data = []
@@ -387,7 +394,7 @@ class Experiment:
             _x, _y, _y_std = es_utils.validate_plot_values(
                 x_value, y_value, y_std=y_std, log=training_run.log, evaluation=training_run.evaluation)
 
-            if not _x and not _y and not _y_std:
+            if _x is None and _y is None and _y_std is None:
                 continue
 
             x_data.append(_x)
@@ -403,7 +410,7 @@ class Experiment:
             if y_std:
                 _y_std = np.std(y_data, axis=0)
                 # If the color of the plots and the shaded area shall be changed, this is the place to do so
-                plt.fill_between(x, y - y_std, y + y_std, alpha=0.5)
+                plt.fill_between(x, y - _y_std, y + _y_std, alpha=0.5)
 
             if x_label and isinstance(x_label, str):
                 plt.xlabel(x_label)
