@@ -315,30 +315,24 @@ def index_training_folder(training_folder):
                 is_model_file = entry.name.endswith(".h5")
                 is_ob_normalization_file = entry.name.startswith("ob_normalization_")
                 is_optimizer_file = entry.name.startswith("optimizer_")
-                # TODO remove video file indexing from files
-                is_video_file = entry.name.endswith(".mp4")
 
-                if is_model_file or is_ob_normalization_file or is_optimizer_file or is_video_file:
+                if is_model_file or is_ob_normalization_file or is_optimizer_file:
                     generation = parse_generation_number(entry.path)
-                    if generation:
+                    if generation is not None:
                         if is_model_file:
                             model_files[generation] = entry.path
                         elif is_ob_normalization_file:
                             ob_normalization_files[generation] = entry.path
                         elif is_optimizer_file:
                             optimizer_files[generation] = entry.path
-                        elif is_video_file:
-                            video_files[generation] = entry.path
                 elif entry.name == "config.json":
                     config_file = entry
                 elif entry.name == "log.csv":
                     log_file = entry
                 elif entry.name == "evaluation.csv":
                     evaluation_file = entry
-            elif entry.is_dir():
-                if entry.name == "videos":
-                    # TODO use index video directory here
-                    pass
+            elif entry.is_dir() and entry.name == "videos":
+                video_files = index_video_files(entry.path)
 
     try:
         training_run = experiments.TrainingRun(
@@ -366,7 +360,7 @@ def index_experiments(experiments_folder):
     :param experiments_folder: A folder which contains sub directories with training runs.
     :return: A list of Experiment objects if valid training runs are found, an empty list otherwise.
     """
-    experiments = []
+    indexed_experiments = []
 
     if os.path.isdir(experiments_folder):
         # This will get the first entry in walk and ouput the directories which are stored in the second entry of the
@@ -397,43 +391,34 @@ def index_experiments(experiments_folder):
                     i += 1
         for training_run_list in different_experiments.values():
             sample_training_run = training_run_list[-1]
-            experiments.append(experiments.Experiment(
+            indexed_experiments.append(experiments.Experiment(
                 sample_training_run.optimizations, sample_training_run.model_structure, sample_training_run.config,
                 training_run_list))
 
-    return experiments
+    return indexed_experiments
 
 
 def index_video_files(video_directory):
+    """Indexes the video sub directory in a TrainingRun folder. It simply searches all sub directories for .mp4 files
+    and adds them to a dictionary with the key being the name of the folder. These are the generation numbers of the
+    respective video file.
+
+    :param video_directory: A path to a directory containing sub directories with numbers as directory names. These
+        in turn contain the video files
+    :return: A dictionary with the key being the generation number and the value being the video file for this
+        generation
+    """
+    video_files = {}
     with os.scandir(video_directory) as it:
+        # Search all sub directories
         for entry in it:
             if entry.is_dir():
-                pass
-                # TODO iterate through every directory, get directory name as generation number and create dict with all
-                # TODO files in the end
-
-def get_video_file(generation, directory):
-    """Returns the file path to a video in the directory, matching the generation number.
-
-    This will delete the additional .json files created by the OpenAI Gym.
-
-    :param generation: The generation for which the video shall be returned
-    :param directory: The directory containing the video which shall be returned
-    :return: If a video can be found matching the generation the file path to it gets returned, otherwise None
-    """
-    video_file_path = None
-    with os.scandir(directory) as it:
-        for entry in it:
-            if entry.is_file():
-                if (entry.name.endswith(".meta.json") or
-                        entry.name.endswith(".manifest.json") or
-                        entry.name.endswith(".stats.json")):
-                    os.remove(entry.path)
-                elif entry.name.endswith(".mp4") and parse_generation_number(entry.name) == generation:
-                    # Immediate return is not good, since the json files from the Monitor from OpenAI Gym need to be
-                    # deleted
-                    video_file_path = entry.path
-    return video_file_path
+                with os.scandir(entry.path) as _it:
+                    # Search all files for a sub directory of a generation
+                    for _entry in _it:
+                        if _entry.is_file() and _entry.name.endswith(".mp4"):
+                            video_files[int(entry.name)] = _entry.path
+    return video_files
 
 
 def act(ob, model, random_stream=None, ac_noise_std=0):
@@ -582,9 +567,8 @@ def rollout_helper(
     if record:
         # TODO maybe increase the resolution (for pybullet envs)
         generation = parse_generation_number(model_file_path)
-        dirname = os.path.dirname(model_file_path)
-        env = wrappers.Monitor(
-            env, os.path.join(dirname, "videos", str(generation)), force=record_force, uid=generation)
+        video_directory = os.path.join(os.path.dirname(model_file_path), "videos", str(generation))
+        env = wrappers.Monitor(env, video_directory, force=record_force)
 
     model = load_model(model_file_path)
 
@@ -600,6 +584,8 @@ def rollout_helper(
 
     if record:
         # Variables are present since they are created inside an "if record" above
-        return get_video_file(generation, dirname)
+        for file in os.listdir(video_directory):
+            if file.endswith(".mp4"):
+                return os.path.join(video_directory, file)
 
     return np.array([rewards.sum(), length])
