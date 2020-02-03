@@ -9,12 +9,13 @@ import time
 
 # Needed for registering the environments of these packages to the OpenAI Gym
 import pybullet_envs
-# import roboschool # TODO import again when finished debugging
+import roboschool # TODO import again when finished debugging
 
 from .config_objects import Optimizations, ModelStructure, Config
 from .config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders
 from .es_errors import InvalidTrainingError
 from . import experiments
+
 
 def validate_config_file(config_file):
     """
@@ -217,22 +218,22 @@ def validate_plot_values(x_value, y_value, y_std=None, log=None, evaluation=None
 
     # It can occur that there is no log file or no evaluation file and the provided parameters do not match
     # the data. This will be checked first before plotting can happen
-    if isinstance(x_value, LogColumnHeaders) and log:
-        _x = log[x_value.name]
-    elif isinstance(x_value, EvaluationColumnHeaders) and evaluation:
-        _x = evaluation[x_value.name]
+    if isinstance(x_value, LogColumnHeaders) and log is not None:
+        _x = log[x_value.value]
+    elif isinstance(x_value, EvaluationColumnHeaders) and evaluation is not None:
+        _x = evaluation[x_value.value]
 
-    if isinstance(y_value, LogColumnHeaders) and log:
-        _y = log[y_value.name]
-    elif isinstance(y_value, EvaluationColumnHeaders) and evaluation:
-        _y = evaluation[y_value.name]
+    if isinstance(y_value, LogColumnHeaders) and log is not None:
+        _y = log[y_value.value]
+    elif isinstance(y_value, EvaluationColumnHeaders) and evaluation is not None:
+        _y = evaluation[y_value.value]
 
-    if isinstance(y_std, LogColumnHeaders) and log:
-        _y_std = log[y_std.name]
-    elif isinstance(y_std, EvaluationColumnHeaders) and evaluation:
-        _y_std = evaluation[y_std.name]
+    if isinstance(y_std, LogColumnHeaders) and log is not None:
+        _y_std = log[y_std.value]
+    elif isinstance(y_std, EvaluationColumnHeaders) and evaluation is not None:
+        _y_std = evaluation[y_std.value]
 
-    if (_x is None or _y is None) or (_y_std and not _y_std):
+    if (_x is None or _y is None) or (y_std and _y_std is None):
         return None, None, None
 
     return _x, _y, _y_std

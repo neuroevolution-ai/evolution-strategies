@@ -219,7 +219,7 @@ class TrainingRun:
         _x, _y, _y_std = es_utils.validate_plot_values(
             x_value, y_value, y_std=y_std, log=self.log, evaluation=self.evaluation)
 
-        if not _x and not _y and not _y_std:
+        if _x is None and _y is None and _y_std is None:
             print(
                 "'{}', '{}' and/or '{}' are invalid keys for the log and/or evaluation or the log and/or evaluation"
                 " does not exist for this training run, and can therefore not be plotted."
