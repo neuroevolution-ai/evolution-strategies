@@ -77,9 +77,7 @@ class TrainingRun:
         assert num_workers > 0
 
         # Is later needed for the head row in the pd.DataFrame
-        columns = []
-        for col in config_values.EvaluationColumnHeaders:
-            columns.append(col.value)
+        columns = [col.value for col in config_values.EvaluationColumnHeaders]
 
         for i in range(num_evaluations):
             columns.append("Rew_{}".format(i))
