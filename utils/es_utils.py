@@ -118,6 +118,9 @@ def validate_config_objects(optimizations, model_structure, config):
         raise InvalidTrainingError("The provided environment ID {} is invalid.".format(config.env_id))
 
     try:
+        if config.env_seed is not None:
+            assert config.env_seed >= 0
+
         assert config.population_size > 0
         assert config.timesteps_per_gen > 0
         assert config.num_workers > 0
@@ -377,7 +380,6 @@ def index_experiments(experiments_folder):
             except InvalidTrainingError:
                 continue
             else:
-
                 for key, value in different_experiments.items():
                     current_item = value[-1]
                     # Matching configuration objects mean the TrainingRun's are part of the same experiment

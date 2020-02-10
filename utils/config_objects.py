@@ -3,6 +3,7 @@ from collections import namedtuple
 
 Config = namedtuple('Config', [
     'env_id',
+    'env_seed',
     'population_size',
     'timesteps_per_gen',
     'num_workers',
