@@ -569,6 +569,8 @@ def rollout_helper(
         # TODO maybe increase the resolution (for pybullet envs)
         generation = parse_generation_number(model_file_path)
         video_directory = os.path.join(os.path.dirname(model_file_path), "videos", str(generation))
+        env.env._render_width = 1280
+        env.env._render_height = 720
         env = wrappers.Monitor(env, video_directory, force=record_force)
 
     model = load_model(model_file_path)
