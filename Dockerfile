@@ -38,8 +38,7 @@ WORKDIR work/evolution-strategies/
 ADD hashed_password.txt .
 ADD launch.sh .
 
-ADD tests/mujoco_envs_pybullet/mujoco_ant.xml .
 RUN mv /opt/conda/lib/python3.7/site-packages/pybullet_data/mjcf/ant.xml /opt/conda/lib/python3.7/site-packages/pybullet_data/mjcf/ant.xml.bak
-RUN ln -s ${WORKDIR}/mujoco_ant.xml /opt/conda/lib/python3.7/site-packages/pybullet_data/mjcf/ant.xml
+RUN ln -s /home/jovyan/work/evolution-strategies/tests/mujoco_envs_pybullet/mujoco_ant.xml /opt/conda/lib/python3.7/site-packages/pybullet_data/mjcf/ant.xml
 
 CMD ["/bin/bash", "launch.sh"]
