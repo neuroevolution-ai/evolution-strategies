@@ -10,6 +10,14 @@ from . import config_values
 
 
 class TrainingRun:
+    """A TrainingRun is one execution of the evolution-strategies.ipynb Notebook. Therefore it represents a result of
+    the evolution strategies with a given config file.
+
+    To initialize a TrainingRun object it is recommended to use the index_training_run() method in es_utils.py, since
+    it automatically validates all the files in the folder, indexes them and returns a TrainingRun object.
+
+    Such a TrainingRun object can be used to evaluate, visualize and plot the TrainingRun.
+    """
     def __init__(self,
                  config_file,
                  log_file=None,
@@ -18,6 +26,16 @@ class TrainingRun:
                  model_files=None,
                  ob_normalization_files=None,
                  optimizer_files=None):
+        """Creates a TrainingRun object.
+
+        :param config_file: The config file created during the execution of the TrainingRun
+        :param log_file: The log file created during the execution of the TrainingRun
+        :param evaluation_file: The evaluation file created during the evaluation of a TrainingRun
+        :param video_files: The video files created during different visualizations from a TrainingRun
+        :param model_files: The model files created during the execution of a TrainingRun
+        :param ob_normalization_files: The observation normalization files created during the execution of a TrainingRun
+        :param optimizer_files: The optimizer files created during the execution of a TrainingRun
+        """
         try:
             self.optimizations, self.model_structure, self.config = es_utils.validate_config_file(config_file)
         except InvalidTrainingError:
@@ -129,7 +147,7 @@ class TrainingRun:
             directory = os.path.dirname(next(iter(self.model_files.values())))
             self.evaluation.to_csv(os.path.join(directory, 'evaluation.csv'))
 
-        # TODO run validate_evaluation
+        # TODO run validate_evaluation when pd dataframe is supported as input
         return self.evaluation
 
     def visualize(self, env_seed=None, generation=-1, force=False):
@@ -297,10 +315,28 @@ class TrainingRun:
 
 
 class Experiment:
-    # TODO docstring
+    """An Experiment is a collection of multiple identical TrainingRuns, therefore resembling multiple instances of
+    an execution of the evolution-strategies.ipynb with equal configurations.
+
+    Identical TrainingRuns mean that the optimizations, model_structure and config file of each TrainingRun have
+    matching values.
+
+    This can be used to validate a result over multiple runs to scientifically strengthen the result. As with
+    the TrainingRun class it is recommended to initialize an object using validate_experiment_folder() from es_utils.py.
+    This way the files get validated, indexed and an Experiment object is returned.
+
+    When the Experiments is evaluated, visualized and plotted, usually all contained TrainingRun objects get used, but
+    this can be configured in the method parameters.
+    """
 
     def __init__(self, optimizations, model_structure, config, training_runs):
-        # TODO docstring
+        """Creates an Experiment object.
+
+        :param optimizations: The optimizations config file used to create each TrainingRun
+        :param model_structure: The model structure config file used to create each TrainingRun
+        :param config: The config file used to create each TrainingRun
+        :param training_runs: The TrainingRuns of this Experiment
+        """
         # Experiment object should only be created through index_experiments() method from es_util. There the objects
         # get validated
         self.optimizations = optimizations

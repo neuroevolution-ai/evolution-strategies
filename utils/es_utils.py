@@ -216,7 +216,17 @@ def validate_evaluation(evaluation_input):
 
 
 def validate_plot_values(x_value, y_value, y_std=None, log=None, evaluation=None):
-    # TODO docstring
+    """Checks if the given keys (x_value, y_value and y_std) can be used to access the given log or evaluation file.
+    If so the data is loaded and returned. Mainly used for plotting data, therefore they are called x and y.
+
+    :param x_value: Key for the data on the x axis
+    :param y_value: Key of the data on the y axis
+    :param y_std: Key for the data to represent the standard deviation through the y axis
+    :param log: The log file from which the data shall be loaded
+    :param evaluation: The evaluation file from which the data shall be loaded
+    :return: None, None, None if on of the keys do not match, even if another would match. Otherwise the data on the
+        x and y axis and if wanted the y_std data.
+    """
     _x, _y, _y_std = None, None, None
 
     # It can occur that there is no log file or no evaluation file and the provided parameters do not match
