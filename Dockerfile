@@ -38,7 +38,10 @@ WORKDIR work/evolution-strategies/
 ADD hashed_password.txt .
 ADD launch.sh .
 
-RUN mv /opt/conda/lib/python3.7/site-packages/pybullet_data/mjcf/ant.xml /opt/conda/lib/python3.7/site-packages/pybullet_data/mjcf/ant.xml.bak
-RUN ln -s /home/jovyan/work/evolution-strategies/tests/mujoco_envs_pybullet/mujoco_ant.xml /opt/conda/lib/python3.7/site-packages/pybullet_data/mjcf/ant.xml
+# Used to test if the robot specifiation file for the MuJoCo Ant is easier to train than the PyBullet Ant. I.e, this
+# replaces the PyBulletAnt with the MuJoCo Ant (in terms of the robot specification, but not within the code itself,
+# (Power coefficient, energy cost, etc.)).
+# RUN mv /opt/conda/lib/python3.7/site-packages/pybullet_data/mjcf/ant.xml /opt/conda/lib/python3.7/site-packages/pybullet_data/mjcf/ant.xml.bak
+# RUN ln -s /home/jovyan/work/evolution-strategies/tests/mujoco_envs_pybullet/mujoco_ant.xml /opt/conda/lib/python3.7/site-packages/pybullet_data/mjcf/ant.xml
 
 CMD ["/bin/bash", "launch.sh"]
