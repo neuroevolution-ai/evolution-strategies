@@ -25,7 +25,7 @@ RUN conda clean --yes --all -f && \
 RUN pip install --quiet \
     tensorflow \
     numpy \
-    gym==0.15.4 \
+    gym \
     roboschool==1.0.48 \
     pybullet
 

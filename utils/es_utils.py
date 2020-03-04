@@ -484,7 +484,7 @@ def rollout(
     :return: Returns the summed reward, timesteps of the episode and the prediction time measurements. If save_obs
         is True, the observations are returned as well
     """
-    env_timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
+    env_timestep_limit = env.spec.max_episode_steps
     timestep_limit = env_timestep_limit if timestep_limit is None else min(timestep_limit, env_timestep_limit)
     rews = []
     times_predict = []
@@ -578,11 +578,12 @@ def rollout_helper(
     env = gym.make(env_id)
 
     if record:
-        # TODO maybe increase the resolution (for pybullet envs)
         generation = parse_generation_number(model_file_path)
         video_directory = os.path.join(os.path.dirname(model_file_path), "videos", str(generation))
+
         env.env._render_width = 1280
         env.env._render_height = 720
+
         env = wrappers.Monitor(env, video_directory, force=record_force)
 
     model = load_model(model_file_path)
