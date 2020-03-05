@@ -9,7 +9,6 @@ import time
 
 # Needed for registering the environments of these packages to the OpenAI Gym
 import pybullet_envs
-import roboschool
 
 from .config_objects import Optimizations, ModelStructure, Config
 from .config_values import ConfigValues, LogColumnHeaders, EvaluationColumnHeaders
@@ -112,6 +111,25 @@ def validate_config_objects(optimizations, model_structure, config):
 
     # Validate values for the config
     try:
+        assert isinstance(config.env_id, str)
+
+        if config.env_id.startswith("Roboschool"):
+            # Replace all Roboschool environments with PyBullet environments since they are equal
+            env_name = config.env_id.replace("Roboschool", "").split("-v")[0]
+            if env_name == "Walker2d":
+                env_name = "Walker2D"
+
+            # It could be that the Roboschool Atlas or Pong environment have been used, these are currently not present
+            # in PyBullet but that is not a problem since then an error will be raised when trying to create the
+            # environment which is caught
+            new_env_id = env_name + "BulletEnv-v0"
+
+            new_config_values = config._asdict()
+            new_config_values["env_id"] = new_env_id
+
+            # Recreate the config object with the new value
+            config = Config(**new_config_values)
+
         # Testing if the ID is valid by creating an environment with it
         gym.make(config.env_id)
     except:

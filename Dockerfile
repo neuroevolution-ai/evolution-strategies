@@ -26,7 +26,6 @@ RUN pip install --quiet \
     tensorflow \
     numpy \
     gym \
-    roboschool==1.0.48 \
     pybullet
 
 # TODO remove this if no widgets are used or Jupyter notebook is sed
