@@ -54,13 +54,19 @@ def validate_config_file(config_file):
     try:
         optimizations = Optimizations(**optimization_dict)
         model_structure = ModelStructure(**model_structure_dict)
+
+        # In an earlier version env_seed was not used. This will add the parameter to the config
+        if not "env_seed" in _config_dict:
+            _config_dict["env_seed"] = None
+
         config = Config(**_config_dict)
     except TypeError:
-        raise InvalidTrainingError("Cannot initialize the Optimizations object from {}".format(optimization_dict))
+        raise InvalidTrainingError("Cannot initialize the configuration objects. The given values do not match the"
+                                   " constructor.")
 
     # Now check the values for the created objects
     try:
-        validate_config_objects(optimizations, model_structure, config)
+        optimizations, model_structure, config = validate_config_objects(optimizations, model_structure, config)
     except InvalidTrainingError:
         raise
 
@@ -158,6 +164,8 @@ def validate_config_objects(optimizations, model_structure, config):
             assert config.l2coeff > 0
     except TypeError or AssertionError:
         raise InvalidTrainingError("One or more of the given values for the config is not valid.")
+
+    return optimizations, model_structure, config
 
 
 def validate_log(log_input):
@@ -594,13 +602,14 @@ def rollout_helper(
     :return: A NumPy array with the reward for the episode and the number of timesteps
     """
     env = gym.make(env_id)
+    env.reset()
 
     if record:
         generation = parse_generation_number(model_file_path)
         video_directory = os.path.join(os.path.dirname(model_file_path), "videos", str(generation))
 
-        env.env._render_width = 1280
-        env.env._render_height = 720
+        env.env._render_width = 1024
+        env.env._render_height = 768
 
         env = wrappers.Monitor(env, video_directory, force=record_force)
 
