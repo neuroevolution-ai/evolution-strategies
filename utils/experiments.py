@@ -443,12 +443,44 @@ class Experiment:
                 y_std_data.append(_y_std)
 
         if x_data and y_data:
+            # It can happen that the individual TrainingRuns require a different amount of generations for the same
+            # number of timesteps. For the standard deviation from NumPy it is however required to have the same
+            # amount of rows, therefore we drop the additional rows.
+            # x_data, y_data and y_std_data are identical in this terms
+            min_count_rows = np.inf
+            for data in x_data:
+                min_count_rows = min(min_count_rows, len(data))
+
+            for i, data in enumerate(x_data):
+                try:
+                    x_data[i] = data.drop(min_count_rows)
+                except KeyError:
+                    # This gets thrown when a Series with the least amount of rows is currently viewed
+                    # And we do not want to drop any lines here
+                    continue
+
+            for i, data in enumerate(y_data):
+                try:
+                    y_data[i] = data.drop(min_count_rows)
+                except KeyError:
+                    # This gets thrown when a Series with the least amount of rows is currently viewed
+                    # And we do not want to drop any lines here
+                    continue
+
             x = np.mean(x_data, axis=0)
             y = np.mean(y_data, axis=0)
             ax.plot(x, y, label=plot_label)
 
             if y_std:
-                _y_std = np.std(y_data, axis=0)
+                for i, data in enumerate(y_std_data):
+                    try:
+                        y_std_data[i] = data.drop(min_count_rows)
+                    except KeyError:
+                        # This gets thrown when a Series with the least amount of rows is currently viewed
+                        # And we do not want to drop any lines here
+                        continue
+
+                _y_std = np.std(y_std_data, axis=0)
                 # If the color of the plots and the shaded area shall be changed, this is the place to do so
                 ax.fill_between(x, y - _y_std, y + _y_std, alpha=0.5)
 
@@ -458,4 +490,4 @@ class Experiment:
             if y_label and isinstance(y_label, str):
                 plt.ylabel(y_label)
 
-            return fig, ax
+        return fig, ax
