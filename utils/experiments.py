@@ -217,7 +217,8 @@ class TrainingRun:
 
         return video_file_path
 
-    def plot_training_run(self, x_value, y_value, y_std=None, x_label=None, y_label=None, plot_label=None):
+    def plot_training_run(
+            self, x_value, y_value, y_std=None, x_label=None, y_label=None, plot_label=None, fig=None, ax=None):
         """Plots the given x_value and y_value keys with possible shaded area by providing the y_std key.
 
         The parameters x_value, y_value and y_std must be of type config_values.LogColumnHeaders or
@@ -230,10 +231,13 @@ class TrainingRun:
         :param x_label: A string to label the x-axis, defaults to None
         :param y_label: A string to label the y-axis, defaults to None
         :param plot_label: When using mutiple plots in one Axes this is the name shown in the legend
+        :param fig: A matplotlib figure which can be used to have multiple plots in one figure
+        :param ax: A matplotlib axes, which can be used to have multiple plots in one figure
         :return: Nothing, the plot will be automatically shown when no errors occurred, otherwise an error message
             is printed.
         """
-        fig, ax = plt.subplots()
+        if fig is None or ax is None:
+            fig, ax = plt.subplots()
 
         _x, _y, _y_std = es_utils.validate_plot_values(
             x_value, y_value, y_std=y_std, log=self.log, evaluation=self.evaluation)
@@ -407,7 +411,7 @@ class Experiment:
                 interval=interval, model_files=model_files, ob_normalization_files=ob_normalization_files,
                 optimizer_files=optimizer_files)
 
-    def plot_experiment(self, x_value, y_value, y_std=None, x_label=None, y_label=None, plot_label=None):
+    def plot_experiment(self, x_value, y_value, y_std=None, x_label=None, y_label=None, plot_label=None, fig=None, ax=None):
         """Plots the given x_value and y_value keys with possible shaded area by providing the y_std key.
 
         Calculates the mean value across the indexed TrainingRun objects of this experiment.
@@ -421,10 +425,13 @@ class Experiment:
         :param x_label: A string to label the x-axis, defaults to None
         :param y_label: A string to label the y-axis, defaults to None
         :param plot_label: When using mutiple plots in one Axes this is the name shown in the legend
+        :param fig: A matplotlib figure which can be used to have multiple plots in one figure
+        :param ax: A matplotlib axes, which can be used to have multiple plots in one figure
         :return: Nothing, the plot will be automatically shown when no errors occurred, otherwise an error message
             is printed.
         """
-        fig, ax = plt.subplots()
+        if fig is None or ax is None:
+            fig, ax = plt.subplots()
 
         x_data = []
         y_data = []
