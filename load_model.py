@@ -1,5 +1,6 @@
 def load_model(model_path):   
     import tensorflow as tf
+    import numpy as np
 
     class Normc_initializer(tf.keras.initializers.Initializer):
         def __init__(self, std=1.0):

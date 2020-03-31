@@ -5,7 +5,6 @@ This is a fork of the implementation of the algorithm described in
 (Tim Salimans, Jonathan Ho, Xi Chen, Ilya Sutskever).
 
 The implementation currently supports all environments which are shipped with the OpenAI Gym, as well as the
-[Roboschool](https://github.com/openai/roboschool/) from OpenAI and the
 [PyBullet Robotics Environments](https://github.com/openai/gym/blob/master/docs/environments.md#pybullet-robotics-environments).
 
 
@@ -57,7 +56,7 @@ The Docker image will be created and called _evolution-strategies_.
 
 After building the Docker image you can create and start the Docker container with
 
-`docker run --user $(id -u) --group-add users -d -p 8888:8888 -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies`.
+`docker run --rm --user $(id -u) --group-add users -d -p 8888:8888 -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies`.
 
 This will automatically set the user ID inside the container to the one you have on the host. The container is started
 in the background and the _evolution-strategies_ directory on the host gets mounted inside the container.
@@ -68,7 +67,7 @@ Now the Jupyter Lab is up and running and can be accessed at `127.0.0.1:8888`.
 
 If you want to run the Jupyter Lab without any security measurements start the Docker container with
 
-`docker run --user $(id -u) --group-add users -d -p 8888:8888 -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies xvfb-run -a -s='-screen 0 1400x900x24' start.sh jupyter lab --NotebookApp.token=''`
+`docker run --rm --user $(id -u) --group-add users -d -p 8888:8888 -v $(pwd):/home/jovyan/work/evolution-strategies evolution-strategies xvfb-run -a -s='-screen 0 1400x900x24' start.sh jupyter lab --NotebookApp.token=''`
 
 Be aware that potentially any user on your network can access the container and execute commands on it, which in turn
 can be executed on the host machine. It is therefore recommended to use the password.
