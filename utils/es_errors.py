@@ -1,0 +1,2 @@
+class InvalidTrainingError(Exception):
+    pass
